@@ -1,0 +1,9 @@
+<Application x:Class="ChessViewer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:ChessViewer.Converters"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+    </Application.Resources>
+</Application>

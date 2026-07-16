@@ -1,0 +1,32 @@
+## .NET / Visual Studio build output
+bin/
+obj/
+*.user
+
+## Rider / VS / VS Code
+.vs/
+.idea/
+.vscode/
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## macOS
+.DS_Store
+
+## Misc
+*.pdb
+*.cache
