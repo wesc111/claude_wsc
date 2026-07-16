@@ -1,0 +1,37 @@
+[Event "Play vs Bot"]
+[Site "Chess.com"]
+[Date "2026.07.08"]
+[Round "-"]
+[White "WernerSchoegler"]
+[Black "David-BOT"]
+[Result "1-0"]
+[CurrentPosition "2k2R2/7Q/8/8/8/PP1N2p1/2P3P1/1K6 b - - 6 57"]
+[Timezone "UTC"]
+[ECO "B00"]
+[ECOUrl "https://www.chess.com/openings/Kings-Pawn-Opening-Goldsmith-Picklepuss-Defense"]
+[UTCDate "2026.07.08"]
+[UTCTime "14:59:43"]
+[WhiteElo "756"]
+[BlackElo "1400"]
+[TimeControl "?"]
+[Termination "Werner Schoegler won by checkmate"]
+[StartTime "14:59:43"]
+[EndDate "2026.07.08"]
+[EndTime "15:27:17"]
+[Link "https://www.chess.com/de/analysis/game/computer/1713011958/review?move=10&tab=review&classification=greatfind&autorun=true"]
+[WhiteUrl "https://images.chesscomfiles.com/uploads/v1/user/69715978.95818f82.50x50o.53a4778cbf8a.jpeg"]
+[WhiteCountry "18"]
+[WhiteTitle ""]
+[BlackUrl "https://images.chesscomfiles.com/uploads/v1/user/66746058.3ab3a14a.50x50o.294079615860.png"]
+[BlackCountry "110"]
+[BlackTitle ""]
+1. e4 h5 $6 2. d4 Nf6 $6 3. Nc3 $6 Nc6 $2 4. Nf3 e6 $6 5. Bg5 $6 d5 $2 6. e5 $1 a5 7. exf6
+gxf6 8. Bf4 Bh6 9. Qd2 Bxf4 10. Qxf4 Nb4 11. O-O-O Qd7 $2 12. a3 Qd6 13. Qxd6 cxd6
+14. Kb1 Nc6 15. Nb5 e5 $2 16. Nxd6+ Ke7 17. Nb5 e4 18. Nd2 Bg4 19. f3 Rhc8 $2 20.
+fxg4 hxg4 21. Be2 g3 22. h3 Rab8 23. Nc3 Rd8 24. Nb5 f5 25. Nb3 a4 26. Nc5 Re8
+27. Nxa4 e3 28. Nc7 Rec8 29. Nxd5+ Ke6 30. Ndb6 Rd8 31. Bc4+ Kf6 32. d5 Ne7 33.
+Nc3 Rd6 34. Nba4 Rc8 35. b3 Re8 36. Rhf1 Rg8 $2 37. Ne4+ Ke5 38. Nxd6 Kxd6 39.
+Rde1 f4 $2 40. Rxf4 Ke5 41. Rxf7 Nxd5 $2 42. Bxd5 Kxd5 43. Rxe3 b6 $6 44. Nxb6+ Kc5
+45. Nc4 Rg5 46. Re5+ Rxe5 47. Nxe5 Kd5 $6 48. Nd3 Kd4 $6 49. Rf3 Kd5 50. h4 Kc6
+51. h5 Kb7 52. h6 Kc6 53. h7 Kb7 54. h8=Q Ka7 55. Rf6 Kb7 56. Qh7+ Kc8 57. Rf8#
+1-0

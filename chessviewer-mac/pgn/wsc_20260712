@@ -1,0 +1,23 @@
+[Event "Play vs Bot"]
+[Site "Chess.com"]
+[Date "2026.07.12"]
+[Round "?"]
+[White "WernerSchoegler"]
+[Black "Wendy-BOT"]
+[Result "1-0"]
+[TimeControl "?"]
+[WhiteElo "756"]
+[BlackElo "1500"]
+[Termination "WernerSchoegler gewinnt durch Schachmatt"]
+[ECO "C50"]
+[EndDate "2026.07.12"]
+[Link "https://www.chess.com/game/computer/1740645866?move=0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 Nf6 5. O-O d5 6. Bb3 dxe4 7. Ng5 O-O 8.
+Nxe4 Nxe4 9. dxe4 Qd4 10. Nc3 Be6 11. Be3 Qxd1 12. Raxd1 Bxe3 13. Bxe6 fxe6 14.
+fxe3 Rxf1+ 15. Rxf1 Nb4 16. Rc1 Rb8 17. a3 Nc6 18. Rd1 Kf7 19. Rd7+ Kf6 20. Rxc7
+a5 21. Na4 Rd8 22. h3 Rd2 23. c3 Re2 24. Rxb7 Kg6 25. Rb6 Nd8 26. Nc5 h5 27.
+Nxe6 Nxe6 28. Rxe6+ Kf7 29. Rxe5 h4 30. Rxa5 Kf6 31. Rd5 Ke6 32. b4 Rxe3 33. Rc5
+Kf6 34. a4 Rxe4 35. a5 Ke6 36. a6 Kd7 37. a7 Re8 38. b5 Kd6 39. Rc4 Re1+ 40. Kh2
+Ra1 41. b6 Ra6 42. b7 Rxa7 43. b8=Q+ Ke6 44. Qxa7 g6 45. Qe3+ Kd7 46. Rd4+ Kc7
+47. Qe6 Kb7 48. Rd7+ Kc8 49. Qe8# 1-0

@@ -1,0 +1,13 @@
+<Application x:Class="ChessViewer.App"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:ChessViewer.Converters"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+    <Application.Resources>
+        <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
+    </Application.Resources>
+</Application>

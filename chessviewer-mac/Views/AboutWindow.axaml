@@ -1,0 +1,27 @@
+<Window x:Class="ChessViewer.Views.AboutWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About Chess Viewer" Width="360" Height="260"
+        Background="#2B2B2B" CanResize="False"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <StackPanel Margin="28,24,28,20">
+
+        <TextBlock Text="Chess Viewer" Foreground="White"
+                   FontSize="20" FontWeight="Bold" Margin="0,0,0,6"/>
+
+        <TextBlock Foreground="#AAAAAA" FontSize="12" Margin="0,0,0,16"
+                   Text="V0.1 — 7/2026"/>
+
+        <TextBlock Foreground="#C8C8D8" FontSize="13" Margin="0,0,0,6"
+                   Text="Werner Schoegler"/>
+
+        <TextBlock Foreground="#C8C8D8" FontSize="13" Margin="0,0,0,6"
+                   Text="Developed with Claude Code"/>
+
+        <TextBlock Foreground="#C8C8D8" FontSize="13" Margin="0,0,0,20"
+                   Text="Built with Avalonia UI"/>
+
+        <Button Content="OK" Width="80" HorizontalAlignment="Right"
+                Height="28" IsDefault="True" Click="OkButton_Click"/>
+    </StackPanel>
+</Window>

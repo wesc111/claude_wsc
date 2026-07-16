@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Bash(nohup dotnet run)",
+      "Bash(echo \"started pid $!\")",
+      "Bash(osascript -e 'tell application \"ChessViewer\" to activate')",
+      "Bash(screencapture -x -o /private/tmp/claude-501/-Users-werner-claude-code-chessviewer-mac/d4e1904b-3127-4b1b-8d6f-315d1c8e66dc/scratchpad/before.png)",
+      "Bash(osascript -e 'tell application \"System Events\" to set frontmost of process \"ChessViewer\" to true')",
+      "Bash(kill 20276)",
+      "Bash(dotnet build *)",
+      "Bash(iconutil -c icns /private/tmp/claude-501/-Users-werner-claude-code-chessviewer-mac/d4e1904b-3127-4b1b-8d6f-315d1c8e66dc/scratchpad/icon-work/AppIcon.iconset -o /private/tmp/claude-501/-Users-werner-claude-code-chessviewer-mac/d4e1904b-3127-4b1b-8d6f-315d1c8e66dc/scratchpad/icon-work/AppIcon.icns)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(xattr -l ChessViewer.app)",
+      "Bash(xattr -l ChessViewer.app/Contents/MacOS/ChessViewer)",
+      "Bash(codesign -dv ChessViewer.app)",
+      "Bash(spctl --assess --type execute -v ChessViewer.app)",
+      "Read(//Users/werner/Library/Logs/DiagnosticReports/**)",
+      "Bash(./build-app.sh)",
+      "Bash(open ChessViewer.app)",
+      "Bash(osascript -e 'tell application \"System Events\" to get name of first process whose frontmost is true')",
+      "Bash(screencapture *)",
+      "Bash(pkill -f \"ChessViewer.app/Contents/MacOS/ChessViewer\")",
+      "Bash(plutil -lint ChessViewer.app/Contents/Info.plist)",
+      "Bash(/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -dump)",
+      "Read(//Library/Logs/DiagnosticReports/**)",
+      "Bash(log show *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(/usr/bin/log show *)",
+      "Read(//Users/werner/claude_code/chessviewer/Models/**)",
+      "Read(//Users/werner/claude_code/**)"
+    ]
+  }
+}

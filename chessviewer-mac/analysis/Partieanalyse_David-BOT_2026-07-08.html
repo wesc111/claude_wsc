@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Partieanalyse_David-BOT_2026-07-08.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> or <div class="page"></div> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="partieanalyse-wernerschoegler-weiß-vs-david-bot-1400">Partieanalyse: WernerSchoegler (Weiß) vs. David-BOT (1400)</h1>
+<p><strong>Datum:</strong> 8. Juli 2026
+<strong>Ergebnis:</strong> 1–0, Matt in 57 Zügen
+<strong>ECO:</strong> B00 (King's Pawn Opening)
+<strong>Link:</strong> https://www.chess.com/de/analysis/game/computer/1713011958/review</p>
+<hr>
+<h2 id="partie-pgn">Partie (PGN)</h2>
+<pre class="hljs"><code><div>1. e4 h5 2. d4 Nf6 3. Nc3 Nc6 4. Nf3 e6 5. Bg5 d5 6. e5 a5 7. exf6
+gxf6 8. Bf4 Bh6 9. Qd2 Bxf4 10. Qxf4 Nb4 11. O-O-O Qd7 12. a3 Qd6
+13. Qxd6 cxd6 14. Kb1 Nc6 15. Nb5 e5 16. Nxd6+ Ke7 17. Nb5 e4 18.
+Nd2 Bg4 19. f3 Rhc8 20. fxg4 hxg4 21. Be2 g3 22. h3 Rab8 23. Nc3
+Rd8 24. Nb5 f5 25. Nb3 a4 26. Nc5 Re8 27. Nxa4 e3 28. Nc7 Rec8
+29. Nxd5+ Ke6 30. Ndb6 Rd8 31. Bc4+ Kf6 32. d5 Ne7 33. Nc3 Rd6
+34. Nba4 Rc8 35. b3 Re8 36. Rhf1 Rg8 37. Ne4+ Ke5 38. Nxd6 Kxd6
+39. Rde1 f4 40. Rxf4 Ke5 41. Rxf7 Nxd5 42. Bxd5 Kxd5 43. Rxe3 b6
+44. Nxb6+ Kc5 45. Nc4 Rg5 46. Re5+ Rxe5 47. Nxe5 Kd5 48. Nd3 Kd4
+49. Rf3 Kd5 50. h4 Kc6 51. h5 Kb7 52. h6 Kc6 53. h7 Kb7 54. h8=Q
+Ka7 55. Rf6 Kb7 56. Qh7+ Kc8 57. Rf8# 1-0
+</div></code></pre>
+<hr>
+<h2 id="eröffnung-110">Eröffnung (1–10)</h2>
+<table>
+<thead>
+<tr>
+<th>Zug</th>
+<th>Kommentar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1...h5?!</td>
+<td>Ungewöhnlich, schwächt Königsflügel früh</td>
+</tr>
+<tr>
+<td>3.Nc3?!</td>
+<td>Inaccuracy — Nf3 zuerst hätte mehr Optionen offengehalten</td>
+</tr>
+<tr>
+<td>3...Nc6??</td>
+<td>Blunder — blockiert eigenen c-Bauern</td>
+</tr>
+<tr>
+<td>5.Bg5?!</td>
+<td>Inaccuracy — verfrühte Fesselung</td>
+</tr>
+<tr>
+<td>5...d5??</td>
+<td>Blunder</td>
+</tr>
+<tr>
+<td><strong>6.e5!</strong></td>
+<td>Bester Zug der Eröffnung — Raumgewinn, greift Sf6 an</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Wichtig:</strong> Anders als in den vorherigen zwei Partien zeigt diese Partie auch <strong>eigene Ungenauigkeiten</strong> (3.Nc3?!, 5.Bg5?!) — nützliches Kalibrierungssignal, dass die Genauigkeit in der Eröffnungsphase noch ausbaufähig ist.</p>
+<hr>
+<h2 id="mittelspiel-1120">Mittelspiel (11–20)</h2>
+<ul>
+<li><strong>11.O-O-O</strong> — solide Rochade, Turm aktiviert Richtung d-Linie</li>
+<li><strong>11...Qd7?? 12.a3 Qd6 13.Qxd6 cxd6</strong> — Schwarz-Fehler ermöglicht günstigen Damentausch</li>
+<li><strong>15.Nb5 e5? 16.Nxd6+</strong> — sauberer Springer-Einbruch, gewinnt Bauer und zerstört schwarze Königsstellung dauerhaft</li>
+</ul>
+<hr>
+<h2 id="lange-manöverphase-1738">Lange Manöverphase (17–38)</h2>
+<p>Ausgedehnte Springerreise (Nb5–d6–b5–d2, später Na4–c5–a4–c3–a4) — eher indirekt, nicht der effizienteste Weg, aber am Ende zielführend. Schwarz gibt in dieser Phase wiederholt Tempo und Material zurück (36...Rg8?, 39...f4?, 41...Nxd5??), ohne dass Weiß unter Druck geraten wäre.</p>
+<hr>
+<h2 id="endspielverwertung-3957">Endspielverwertung (39–57)</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Bewertung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>41.Rxf7</td>
+<td>Weiterer Bauerngewinn</td>
+</tr>
+<tr>
+<td>42.Bxd5 Kxd5 43.Rxe3</td>
+<td>Saubere Materialabräumung</td>
+</tr>
+<tr>
+<td>47.Nxe5</td>
+<td>Vereinfachung zu gewonnenem T+S-Endspiel</td>
+</tr>
+<tr>
+<td>50–54. h4-h5-h6-h7-h8=Q</td>
+<td><strong>Lehrbuchmäßige Freibauer-Umwandlung</strong> — keine verschwendeten Züge</td>
+</tr>
+<tr>
+<td>57.Rf8#</td>
+<td>Dame+Turm-Zusammenspiel, korrekt berechnetes Matt</td>
+</tr>
+</tbody>
+</table>
+<h3 id="diagramm-1--stellung-vor-dem-bauernmarsch-nach-49kd5">Diagramm 1 — Stellung vor dem Bauernmarsch (nach 49...Kd5)</h3>
+<p><img src="position_before_h_pawn_march.png" alt="Position vor dem h-Bauern-Marsch"></p>
+<p>Weißer König auf b1, Turm f3, Springer d3, freier Bauer auf h3. Schwarz hat nur König und einen wertlosen g3-Bauern. Der Pfeil zeigt den geplanten Weg des h-Bauern bis zur Umwandlung auf h8.</p>
+<h3 id="diagramm-2--stellung-nach-der-umwandlung-54h8q">Diagramm 2 — Stellung nach der Umwandlung (54.h8=Q)</h3>
+<p><img src="position_after_promotion.png" alt="Position nach der Bauernumwandlung"></p>
+<p>Der neue Damengewinn entscheidet die Partie endgültig. Drei Züge später folgt 57.Rf8#.</p>
+<hr>
+<h2 id="vergleich-über-die-drei-bisher-analysierten-partien">Vergleich über die drei bisher analysierten Partien</h2>
+<table>
+<thead>
+<tr>
+<th>Fähigkeit</th>
+<th>Partie 1 (King's Gambit)</th>
+<th>Partie 2 (Rd6+ Kombination)</th>
+<th>Partie 3 (diese Partie)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gegnerfehler bestrafen</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Eigene Initiative/Kombination</td>
+<td>–</td>
+<td>✓ (27.Rd6+)</td>
+<td>✓ (6.e5!, 15.Nb5-d6+)</td>
+</tr>
+<tr>
+<td>Eigene Ungenauigkeiten sichtbar</td>
+<td>nicht markiert</td>
+<td>nicht markiert</td>
+<td><strong>ja (3.Nc3?!, 5.Bg5?!)</strong></td>
+</tr>
+<tr>
+<td>Endspieltechnik</td>
+<td>kurz</td>
+<td>kurz</td>
+<td><strong>lang, sauber (≈20 Züge Technik)</strong></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="gesamteinschätzung">Gesamteinschätzung</h2>
+<p><strong>Aktuelle Schätzung: ca. 950–1100 Elo</strong></p>
+<ul>
+<li>Die Endspieltechnik (Freibauer-Umwandlung, Turm+Springer-Koordination, geduldige Verwertung über ~20 Züge ohne Fehler) ist ein solides positives Signal.</li>
+<li>Die eigenen markierten Ungenauigkeiten zeigen, dass die Berechnung gut ist, in der Eröffnungs-/Planpräzision aber noch Potenzial besteht.</li>
+<li>Es fehlt weiterhin ein Datenpunkt, in dem eine schlechtere oder ausgeglichene Stellung verteidigt werden musste — alle drei Partien waren spätestens ab Zug 15–20 klar besser.</li>
+</ul>
+<p><strong>Für eine engere Kalibrierung:</strong> weitere Partien, idealerweise mit mindestens einer schwierigeren Verteidigungssituation.</p>
+
+</body>
+</html>

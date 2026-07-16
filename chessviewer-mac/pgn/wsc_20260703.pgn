@@ -1,0 +1,20 @@
+[Event "Play vs Bot"]
+[Site "Chess.com"]
+[Date "2026.07.03"]
+[Round "?"]
+[White "WernerSchoegler"]
+[Black "Antonio-BOT"]
+[Result "1-0"]
+[TimeControl "?"]
+[WhiteElo "756"]
+[BlackElo "1500"]
+[Termination "WernerSchoegler gewinnt durch Schachmatt"]
+[ECO "C30"]
+[EndDate "2026.07.03"]
+[Link "https://www.chess.com/game/computer/1681274922?move=0"]
+1. e4 e5 2. f4 Bc5 3. Nf3 d6 4. c3 Bg4 5. Be2 Bxf3 6. Bxf3 Qf6 7. f5 Nd7 8. d3
+O-O-O 9. h4 a5 10. Bg5 Bf2+ 11. Kxf2 Rf8 12. Bxf6 Ngxf6 13. a3 h5 14. b4 axb4
+15. axb4 Rh7 16. Ra8+ Nb8 17. Qa4 Ng4+ 18. Bxg4 Rd8 19. Bh3 c6 20. Qa5 Kd7 21.
+Qb6 Rhh8 22. f6+ Ke8 23. Qxb7 gxf6 24. Rxb8 f5 25. Bxf5 Rxb8 26. Qxb8+ Ke7 27.
+Qxh8 c5 28. Qxh5 cxb4 29. Qg5+ Ke8 30. cxb4 d5 31. exd5 Kf8 32. Qf6 Kg8 33. d6
+e4 34. d7 e3+ 35. Kxe3 Kf8 36. d8=Q# 1-0
