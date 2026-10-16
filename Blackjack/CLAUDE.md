@@ -35,6 +35,7 @@ The full requirements are in `docs/SPEC.md`. **Read it before starting any task.
 dotnet build
 dotnet test
 dotnet run --project src/Blackjack.ConsoleApp -- --help   # play the console game (M2)
+dotnet run -c Release --project src/Blackjack.Simulation -- --strategy basic   # run a simulation (M3)
 ```
 
 A task is only complete when the build has no warnings and all tests pass.

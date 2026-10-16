@@ -372,14 +372,14 @@ With `DealerHitsSoft17 = true` (H17):
 | Strategy | Description |
 |---|---|
 | `BasicStrategyPlayer` | Hit/Stand table depending on player total, soft/hard and dealer upcard (see 6.2); flat bet |
-| `MimicDealerPlayer` | Plays like the dealer: hit ≤ 16, stand ≥ 17 |
-| `NeverBustPlayer` | Stands on hard 12+, otherwise hits |
+| `MimicDealerPlayer` | Plays like the dealer: hit ≤ 16, stand ≥ 17 (uses Core's `DealerStrategy`, so it also follows H17 when that rule is set) |
+| `NeverBustPlayer` | Hard hands: stands on 12+, otherwise hits. Soft hands: hits up to soft 17, stands on soft 18+ |
 
 Strategies always use a fixed bet (configurable).
 
 ### 6.2 Basic strategy (Hit/Stand only, S17, multi-deck)
 
-The table must be stored as data (e.g. a 2-D array or JSON file) so it can later be extended for Double/Split.
+The table must be stored as data (e.g. a 2-D array or JSON file) so it can later be extended for Double/Split. Implementation: one row of action letters per player total, one column per upcard 2–A (e.g. hard 12 = `HHSSSHHHHH`); M4 adds `D` and `P`. The same S17 table is used under H17 (the Hit/Stand differences are negligible).
 
 **Hard totals** (columns: dealer upcard)
 
@@ -400,8 +400,11 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 
 ### 6.3 Simulator
 
-- Command-line tool: strategy, number of rounds, seed, bet, number of parallel workers.
-- Parallel execution with independent engine instances and derived seeds; results reproducible for identical parameters.
+- Command-line tool `blackjack-sim`: `--strategy basic|mimic|neverbust` (required), `--rounds` (default 1,000,000), `--seed` (default: random, printed so the run can be repeated), `--bet` (default 10), `--workers` (default: number of CPU cores), `--csv <file>`, `--help`.
+- Optional rule arguments: `--decks`, `--h17`, `--payout`, `--penetration` (defaults as in 2.1).
+- The table limits are set to the bet (`MinBet = MaxBet = bet`).
+- Parallel execution with independent engine instances and derived seeds; results reproducible for identical parameters (including the number of workers). Worker *i* plays a fixed share of the rounds with a seed derived from the main seed.
+- Elapsed time and rounds per second are reported.
 - Unlimited bankroll in simulation mode (no ruin): starting bankroll `null` (see 2.5).
 - Performance target: 1 million rounds in well under one minute on a current machine.
 
@@ -414,13 +417,21 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 | Net result | sum of all net payouts |
 | House edge | −net result / total wagered, in % |
 | Standard error, 95 % CI | of the per-round result (in % of bet) |
-| Win / loss / push rates | in % |
-| Blackjack rate | player Blackjacks in % |
-| Bust rates | player and dealer |
-| Breakdown | result per dealer upcard and per player starting total |
+| Win / loss / push rates | in % of rounds |
+| Blackjack rate | player Blackjacks in % of rounds |
+| Bust rates | player: in % of rounds; dealer: in % of the rounds in which the dealer played out the hand (player not bust, no Blackjack on either side) |
+| Breakdown | result per dealer upcard (2–9, 10 for all ten-valued cards, A) and per player starting total (`hard 4` … `hard 20`, `soft 12` … `soft 20`, `Blackjack`); each row with rounds, house edge, win/loss/push rates |
 
-- Output as a formatted table on the console, optionally as CSV.
-- Plausibility check: `MimicDealerPlayer` should yield a house edge of approx. 5–6 %.
+- Statistics are computed from the returned `RoundResult`s; money totals in `decimal`, variance in `double` (in units of the bet).
+- Output as a formatted table on the console, optionally as CSV (`--csv`): one table with columns `Category,Key,Rounds,Wagered,Net,HouseEdgePct,WinPct,LossPct,PushPct,BlackjackPct,PlayerBustPct,DealerBustPct` and rows `Total`, `DealerUpcard/<key>`, `StartingTotal/<key>`; invariant culture.
+- Plausibility checks (tests, 1 million rounds, fixed seed; 95 % CI ≈ ±0.23 %):
+  - `MimicDealerPlayer` yields a house edge of approx. 5–6 %.
+  - `BasicStrategyPlayer` (Hit/Stand only): 2.37 % ± 0.4 %.
+  - `NeverBustPlayer`: 6.03 % ± 0.4 %.
+  - Ranking: basic < mimic < never-bust. (Planned as basic < never-bust < mimic; the measurement showed that without doubling, standing on 12–16 against a dealer 7–A costs never-bust more than mimic-the-dealer loses by busting.)
+  - Player Blackjack rate ≈ 4.75 % (theory for 6 decks), never-bust never busts.
+  - 1 million rounds take less than 60 seconds.
+- Reference values measured in M3 with 2 × 20 million rounds (seeds 11 and 12, defaults of 2.1): basic 2.36 % / 2.39 %, mimic 5.68 % / 5.70 %, never-bust 6.04 % / 6.02 % (SE 0.02 % each). Speed: about 6 million rounds per second on an Apple Silicon Mac (Release build).
 
 ---
 
