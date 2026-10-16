@@ -16,10 +16,12 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Blackjack.TestSupport" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Blackjack.Core\Blackjack.Core.csproj" />
+    <ProjectReference Include="..\Blackjack.TestSupport\Blackjack.TestSupport.csproj" />
   </ItemGroup>
 
 </Project>

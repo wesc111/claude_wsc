@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Blackjack.ConsoleApp</RootNamespace>
+    <AssemblyName>blackjack</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Blackjack.ConsoleApp.Tests" />
+    <Using Include="Blackjack.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Blackjack.Core\Blackjack.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -162,14 +162,11 @@ public sealed class BlackjackGame
 
     private void ValidateBet(decimal bet)
     {
-        if (bet < _rules.MinBet || bet > _rules.MaxBet)
+        var context = new BetContext(Bankroll, _rules);
+        if (!context.IsValidBet(bet))
         {
-            throw new ArgumentOutOfRangeException(nameof(bet), bet, $"The bet must be between {_rules.MinBet} and {_rules.MaxBet}.");
-        }
-
-        if (Bankroll is { } available && bet > available)
-        {
-            throw new ArgumentOutOfRangeException(nameof(bet), bet, $"The bet exceeds the bankroll ({available}).");
+            throw new ArgumentOutOfRangeException(
+                nameof(bet), bet, $"The bet must be between {_rules.MinBet} and {context.MaxAllowedBet}.");
         }
     }
 

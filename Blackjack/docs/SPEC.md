@@ -144,7 +144,9 @@ Blackjack.slnx
 │  ├─ Blackjack.Simulation/      AI players, simulator, statistics          (M3)
 │  └─ Blackjack.Gui/             Avalonia app                              (M5)
 ├─ tests/
+│  ├─ Blackjack.TestSupport/     Shared test helpers: FixedCardSource, card parsing (M2)
 │  ├─ Blackjack.Core.Tests/      xUnit
+│  ├─ Blackjack.ConsoleApp.Tests/ xUnit                                     (M2)
 │  └─ Blackjack.Simulation.Tests/ xUnit                                     (M3)
 ├─ docs/SPEC.md
 └─ CLAUDE.md
@@ -181,7 +183,13 @@ public interface IPlayerStrategy
 }
 
 /// <param name="Bankroll">Current bankroll, or <c>null</c> if unlimited.</param>
-public sealed record BetContext(decimal? Bankroll, Rules Rules);
+public sealed record BetContext(decimal? Bankroll, Rules Rules)
+{
+    /// <summary>The largest valid bet: MaxBet, limited by the bankroll.</summary>
+    public decimal MaxAllowedBet { get; }
+    /// <summary>True if the bet satisfies the rules of 2.5. The engine uses the same check.</summary>
+    public bool IsValidBet(decimal bet);
+}
 
 public sealed record DecisionContext(
     IReadOnlyList<Card> PlayerCards,
@@ -338,18 +346,22 @@ With `DealerHitsSoft17 = true` (H17):
 
 ## 5. Milestone 2 – Console application
 
-- Start: bankroll (default 1000), MinBet 10, MaxBet 500 – configurable via command-line arguments.
+- Start: bankroll (default 1000), MinBet 10, MaxBet 500 – configurable via command-line arguments `--bankroll`, `--min-bet`, `--max-bet`. Optional `--seed` for a reproducible shoe; `--help` shows the usage. Invalid arguments (including MaxBet < MinBet or bankroll < MinBet) → message, usage, exit code 1.
 - `ConsolePlayer : IPlayerStrategy` reads bet and actions from the console.
 - Display:
-  - Cards with Unicode suit symbols, e.g. `A♠ 10♥`; red suits colored red if the terminal supports it.
+  - Cards with Unicode suit symbols, e.g. `A♠ 10♥`; red suits colored red if the terminal supports it (ANSI colors; off when output is redirected or `NO_COLOR` is set).
   - Dealer hole card hidden as `[??]` until revealed.
   - Current totals (soft hands as e.g. `soft 17`).
   - Result and new bankroll after each round.
-- Commands during the turn: `h` = Hit, `s` = Stand, `q` = quit (after the round).
+  - Amounts without unnecessary decimals, `.` as decimal point (`22.5`, `975`).
+- Bet prompt: Enter repeats the last bet (first round: MinBet), limited to the largest allowed bet; `q` quits. Both `.` and `,` are accepted as decimal separator.
+- Commands during the turn: `h` = Hit, `s` = Stand, `q` = quit after the round (the player is told so and asked for h/s again).
 - Invalid input → message and repeat prompt.
-- Game ends when the player quits or the bankroll falls below MinBet; a session summary is shown (rounds, wins, losses, pushes, net result).
+- Game ends when the player quits, the bankroll falls below MinBet, or the input ends (treated as quitting); a session summary is shown (rounds, wins, losses, pushes, net result).
+- Ctrl+C aborts the current round (bankroll restored, round not counted), shows the summary and exits.
 - Quitting: `ConsolePlayer` remembers a `q` and returns `null` from the next `GetBetAsync`.
-- Display is driven by an `IGameObserver` (no game logic in the console app).
+- Display is driven by an `IGameObserver` (no game logic in the console app; totals are computed with Core's `Hand`, bet checks with `BetContext.IsValidBet`).
+- Tests (`Blackjack.ConsoleApp.Tests`): argument parsing, input handling, card formatting, display, session statistics and an end-to-end session with a predefined card sequence and scripted input.
 
 ---
 

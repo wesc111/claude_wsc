@@ -1,6 +1,7 @@
 using System.Globalization;
+using Blackjack.Core;
 
-namespace Blackjack.Core.Tests.Helpers;
+namespace Blackjack.TestSupport;
 
 /// <summary>Parses short card lists such as "A K 10 6" or "AH 10S" (suit letter optional, default spades).</summary>
 public static class Cards

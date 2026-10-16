@@ -34,6 +34,7 @@ The full requirements are in `docs/SPEC.md`. **Read it before starting any task.
 ```bash
 dotnet build
 dotnet test
+dotnet run --project src/Blackjack.ConsoleApp -- --help   # play the console game (M2)
 ```
 
 A task is only complete when the build has no warnings and all tests pass.

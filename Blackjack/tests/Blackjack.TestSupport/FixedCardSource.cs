@@ -1,4 +1,6 @@
-namespace Blackjack.Core.Tests.Helpers;
+using Blackjack.Core;
+
+namespace Blackjack.TestSupport;
 
 /// <summary>
 /// Deals a predefined card sequence. Drawing past the end throws, so tests detect unexpected draws.
