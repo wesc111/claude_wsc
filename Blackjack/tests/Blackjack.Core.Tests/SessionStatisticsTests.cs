@@ -1,4 +1,4 @@
-namespace Blackjack.ConsoleApp.Tests;
+namespace Blackjack.Core.Tests;
 
 public sealed class SessionStatisticsTests
 {

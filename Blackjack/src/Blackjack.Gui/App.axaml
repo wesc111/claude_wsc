@@ -1,0 +1,12 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Blackjack.Gui.Views"
+             x:Class="Blackjack.Gui.App"
+             RequestedThemeVariant="Dark">
+    <Application.Resources>
+        <views:CardImageConverter x:Key="CardImage" />
+    </Application.Resources>
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+</Application>

@@ -2,11 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/Blackjack.ConsoleApp/Blackjack.ConsoleApp.csproj" />
     <Project Path="src/Blackjack.Core/Blackjack.Core.csproj" />
+    <Project Path="src/Blackjack.Gui/Blackjack.Gui.csproj" />
     <Project Path="src/Blackjack.Simulation/Blackjack.Simulation.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Blackjack.ConsoleApp.Tests/Blackjack.ConsoleApp.Tests.csproj" />
     <Project Path="tests/Blackjack.Core.Tests/Blackjack.Core.Tests.csproj" />
+    <Project Path="tests/Blackjack.Gui.Tests/Blackjack.Gui.Tests.csproj" />
     <Project Path="tests/Blackjack.Simulation.Tests/Blackjack.Simulation.Tests.csproj" />
     <Project Path="tests/Blackjack.TestSupport/Blackjack.TestSupport.csproj" />
   </Folder>

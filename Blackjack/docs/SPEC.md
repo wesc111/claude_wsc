@@ -149,7 +149,8 @@ Blackjack.slnx
 │  ├─ Blackjack.TestSupport/     Shared test helpers: FixedCardSource, card parsing (M2)
 │  ├─ Blackjack.Core.Tests/      xUnit
 │  ├─ Blackjack.ConsoleApp.Tests/ xUnit                                     (M2)
-│  └─ Blackjack.Simulation.Tests/ xUnit                                     (M3)
+│  ├─ Blackjack.Simulation.Tests/ xUnit                                     (M3)
+│  └─ Blackjack.Gui.Tests/       xUnit (ViewModels, GuiPlayer)              (M5)
 ├─ docs/SPEC.md
 └─ CLAUDE.md
 ```
@@ -567,12 +568,17 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 
 ## 8. Milestone 5 – Avalonia GUI
 
-- Avalonia (current stable version), MVVM with CommunityToolkit.Mvvm.
-- `GuiPlayer : IPlayerStrategy` with `TaskCompletionSource`; buttons (Hit, Stand, later Double, Split) complete the pending task; buttons enabled only for `AllowedActions`.
-- Graphical card rendering; animated dealing driven by an `IGameObserver` that awaits each `CardDealt` animation.
-- Closing the window cancels the pending round via the `CancellationToken`; a "Leave table" action makes `GuiPlayer` return `null` from `GetBetAsync`.
-- Display of bankroll, bet (chips or input field), totals, round result.
-- Card graphics: decision to be made at the start of M5 – either a free SVG card set (license to be checked) via `Avalonia.Svg.Skia`, or cards drawn as a custom Avalonia control.
+- Avalonia 12 (current stable version 12.1.4: `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`), MVVM with CommunityToolkit.Mvvm 8.4.
+- Project `src/Blackjack.Gui`, tests in `tests/Blackjack.Gui.Tests` (ViewModels and `GuiPlayer` without UI; no headless UI tests). The window is checked manually / by screenshot.
+- `GuiPlayer : IPlayerStrategy` with `TaskCompletionSource`; buttons (Hit, Stand, Double, Split) complete the pending task; buttons enabled only for `AllowedActions`.
+- Graphical card rendering; animated dealing driven by an `IGameObserver` that awaits each `CardDealt` animation (duration configurable, 0 in tests). The hole card shows the card back and is turned over on `HoleCardRevealed`.
+- The game loop runs on the UI thread, so all notifications arrive there (the engine keeps the synchronization context).
+- Closing the window cancels the pending round via the `CancellationToken` (bankroll restored); a "Leave table" action makes `GuiPlayer` return `null` from `GetBetAsync` and shows the session summary.
+- Display of bankroll, bet, dealer and player hands with totals (e.g. `soft 17`), bet and result per hand.
+- Bet with chips 5, 10, 25, 100 (added up) and "Clear"; default is the last bet; checked with `BetContext.IsValidBet`. When the bankroll falls below the minimum bet, a message with "New game" is shown.
+- Labels in English, like the rest of the project.
+- Card graphics: the PNG set in `cards-png/` (see `docs/CARDS.md`) including `card_back.png`, embedded as Avalonia resources. SVG is not used because `Avalonia.Svg.Skia` is only available for Avalonia 11.
+- `SessionStatistics` (rounds, wins, losses, pushes, net) moves from the console app to Core, so console and GUI share it.
 - Must run on macOS (Apple Silicon); Windows and Linux desirable.
 
 ---

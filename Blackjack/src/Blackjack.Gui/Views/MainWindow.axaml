@@ -1,0 +1,137 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Blackjack.Gui.ViewModels"
+        x:Class="Blackjack.Gui.Views.MainWindow"
+        x:DataType="vm:TableViewModel"
+        Title="Blackjack"
+        Width="1040" Height="760" MinWidth="800" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="#0b5d2a">
+
+    <Window.Styles>
+        <!-- Each new card slides in and fades in. -->
+        <Style Selector="Image.card">
+            <Setter Property="Width" Value="100" />
+            <Setter Property="Height" Value="145" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.3" Easing="CubicEaseOut" FillMode="Forward">
+                    <!-- Margin and opacity only: Avalonia 12 has no animator for RenderTransform. Top and bottom
+                         margin change together, so the card moves without changing the layout height. -->
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                        <Setter Property="Margin" Value="0,-40,0,40" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                        <Setter Property="Margin" Value="0,0,0,0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Border.hand">
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.hand.active">
+            <Setter Property="BorderBrush" Value="Gold" />
+            <Setter Property="Background" Value="#22ffffff" />
+        </Style>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="TextBlock.title">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="MinWidth" Value="84" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.chip">
+            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="CornerRadius" Value="28" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Background" Value="#b8860b" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+    </Window.Styles>
+
+    <Window.Resources>
+        <!-- A hand: title with total, overlapping cards, bet and result. -->
+        <DataTemplate x:Key="HandTemplate" x:DataType="vm:HandViewModel">
+            <Border Classes="hand" Classes.active="{Binding IsActive}">
+                <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Classes="title" Text="{Binding Title}" />
+                        <TextBlock Classes="title" Text="{Binding TotalText}" Foreground="#ffe08a" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Cards}" MinHeight="145">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <!-- Negative spacing overlaps the cards; each card keeps its full size. -->
+                                <StackPanel Orientation="Horizontal" Spacing="-58" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CardViewModel">
+                                <Image Classes="card" Source="{Binding ImageName, Converter={StaticResource CardImage}}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding BetText}" />
+                    <TextBlock Text="{Binding ResultText}" FontWeight="SemiBold" Foreground="#ffe08a" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel Margin="20">
+        <!-- Header: bankroll and Leave table. -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <TextBlock Text="{Binding BankrollText}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="Leave table" Command="{Binding LeaveTableCommand}" />
+        </Grid>
+
+        <!-- Footer: bet, actions, status. -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="12">
+            <TextBlock Text="{Binding LastResult}" FontSize="22" FontWeight="Bold" Foreground="#ffe08a"
+                       HorizontalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding BetText}" FontSize="18" VerticalAlignment="Center" MinWidth="110" />
+                <Button Classes="chip" Content="5" CommandParameter="5" Command="{Binding AddChipCommand}" />
+                <Button Classes="chip" Content="10" CommandParameter="10" Command="{Binding AddChipCommand}" />
+                <Button Classes="chip" Content="25" CommandParameter="25" Command="{Binding AddChipCommand}" />
+                <Button Classes="chip" Content="100" CommandParameter="100" Command="{Binding AddChipCommand}" />
+                <Button Content="Clear" Command="{Binding ClearBetCommand}" VerticalAlignment="Center" />
+                <Button Content="Deal" Command="{Binding DealCommand}" IsDefault="True" VerticalAlignment="Center"
+                        FontWeight="Bold" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                <Button Content="Hit" Command="{Binding HitCommand}" />
+                <Button Content="Stand" Command="{Binding StandCommand}" />
+                <Button Content="Double" Command="{Binding DoubleCommand}" />
+                <Button Content="Split" Command="{Binding SplitCommand}" />
+                <Button Content="New game" Command="{Binding NewGameCommand}" IsVisible="{Binding IsSessionOver}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Status}" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+        </StackPanel>
+
+        <!-- Table: dealer at the top, player hands below. -->
+        <Grid RowDefinitions="Auto,*">
+            <ContentControl Content="{Binding Dealer}" ContentTemplate="{StaticResource HandTemplate}"
+                            HorizontalAlignment="Center" />
+            <ItemsControl Grid.Row="1" ItemsSource="{Binding PlayerHands}" ItemTemplate="{StaticResource HandTemplate}"
+                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </Grid>
+    </DockPanel>
+</Window>

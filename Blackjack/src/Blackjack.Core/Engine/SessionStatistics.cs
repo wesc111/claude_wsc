@@ -1,7 +1,11 @@
-namespace Blackjack.ConsoleApp;
+namespace Blackjack.Core;
 
-/// <summary>Counts the completed rounds of a session. Aborted rounds are never recorded.</summary>
-internal sealed class SessionStatistics
+/// <summary>
+/// Counts the completed rounds of a playing session (console and GUI). Record only the results that
+/// <see cref="BlackjackGame.PlayRoundAsync"/> returns, so aborted rounds are never counted.
+/// Wins, losses and pushes are counted per hand.
+/// </summary>
+public sealed class SessionStatistics
 {
     /// <summary>Number of completed rounds.</summary>
     public int Rounds { get; private set; }
@@ -19,6 +23,7 @@ internal sealed class SessionStatistics
     public decimal Net { get; private set; }
 
     /// <summary>Records a completed round.</summary>
+    /// <param name="result">The result returned by <see cref="BlackjackGame.PlayRoundAsync"/>.</param>
     public void Record(RoundResult result)
     {
         ArgumentNullException.ThrowIfNull(result);

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Blackjack.Gui.Tests</RootNamespace>
+    <!-- XML docs are required for the public API of the library, not for tests. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Blackjack.Core" />
+    <Using Include="Blackjack.TestSupport" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Blackjack.Gui\Blackjack.Gui.csproj" />
+    <ProjectReference Include="..\Blackjack.TestSupport\Blackjack.TestSupport.csproj" />
+  </ItemGroup>
+
+</Project>

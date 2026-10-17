@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Blackjack.Gui</RootNamespace>
+    <AssemblyName>BlackjackGui</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The 52 standard cards and the card back from cards-png (no jokers, no alternative court designs). -->
+    <AvaloniaResource Include="..\..\cards-png\*_of_*.png" Exclude="..\..\cards-png\*2.png" Link="Assets\Cards\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\cards-png\card_back.png" Link="Assets\Cards\card_back.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Blackjack.Gui.Tests" />
+    <Using Include="Blackjack.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Blackjack.Core\Blackjack.Core.csproj" />
+  </ItemGroup>
+
+</Project>
