@@ -25,7 +25,19 @@ public sealed class PlayerTests
     [InlineData("A 6", "2", PlayerAction.Hit)]
     [InlineData("5 4 A 2", "4", PlayerAction.Stand)]
     public void BasicStrategy(string cards, string upcard, PlayerAction expected) =>
-        Assert.Equal(expected, new BasicStrategyPlayer(10m).Decide(Context(cards, upcard)));
+        Assert.Equal(expected, new BasicStrategyPlayer(10m, BasicStrategyTable.HitStand).Decide(Context(cards, upcard)));
+
+    [Fact]
+    public async Task FullBasicStrategyDoublesAndSplitsWhenAllowed()
+    {
+        var all = new HashSet<PlayerAction> { PlayerAction.Hit, PlayerAction.Stand, PlayerAction.Double, PlayerAction.Split };
+        var player = PlayerFactory.Create("basic", 10m, Rules.Default);
+        var eleven = new Hand(Cards.Parse("6 5"));
+        var eights = new Hand(Cards.Parse("8 8"));
+
+        Assert.Equal(PlayerAction.Double, await player.DecideAsync(new DecisionContext(eleven.Cards.ToArray(), 11, false, Cards.ParseOne("6"), all), Ct));
+        Assert.Equal(PlayerAction.Split, await player.DecideAsync(new DecisionContext(eights.Cards.ToArray(), 16, false, Cards.ParseOne("10"), all), Ct));
+    }
 
     [Theory]
     [InlineData("10 6", PlayerAction.Hit)]
@@ -54,6 +66,7 @@ public sealed class PlayerTests
 
     [Theory]
     [InlineData("basic", typeof(BasicStrategyPlayer))]
+    [InlineData("basic-hs", typeof(BasicStrategyPlayer))]
     [InlineData("mimic", typeof(MimicDealerPlayer))]
     [InlineData("neverbust", typeof(NeverBustPlayer))]
     public async Task FactoryCreatesFlatBetPlayers(string name, Type type)

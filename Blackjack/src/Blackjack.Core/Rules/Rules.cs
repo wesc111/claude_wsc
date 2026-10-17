@@ -17,8 +17,12 @@ public sealed record Rules
     private readonly decimal _blackjackPayout = 1.5m;
     private readonly decimal _minBet = 10m;
     private readonly decimal _maxBet = 500m;
+    private readonly int _maxSplitHands = 4;
 
-    /// <summary>The default rules: 6 decks, 75 % penetration, S17, 3:2, peek, bets 10–500.</summary>
+    /// <summary>The largest supported value of <see cref="MaxSplitHands"/>.</summary>
+    public const int MaxSplitHandsLimit = 4;
+
+    /// <summary>The default rules: 6 decks, 75 % penetration, S17, 3:2, peek, bets 10–500, DAS, split to 4 hands, no re-split of Aces.</summary>
     public static Rules Default { get; } = new();
 
     /// <summary>Number of decks in the shoe (1–8). Default 6.</summary>
@@ -77,6 +81,24 @@ public sealed record Rules
         get => _maxBet;
         init => _maxBet = value;
     }
+
+    /// <summary>Whether a hand from a split may be doubled (except split Aces). Default <c>true</c>.</summary>
+    public bool DoubleAfterSplit { get; init; } = true;
+
+    /// <summary>Maximum number of hands reachable by splitting (1–4; 1 = no splitting). Default 4.</summary>
+    public int MaxSplitHands
+    {
+        get => _maxSplitHands;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1, nameof(MaxSplitHands));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, MaxSplitHandsLimit, nameof(MaxSplitHands));
+            _maxSplitHands = value;
+        }
+    }
+
+    /// <summary>Whether split Aces may be split again. Default <c>false</c>.</summary>
+    public bool ResplitAces { get; init; }
 
     internal static void ValidateDecks(int decks, string paramName)
     {

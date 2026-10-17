@@ -71,10 +71,10 @@ public sealed class OutputTests
 
         Assert.Equal(CsvWriter.Header, lines[0]);
         Assert.Equal(1 + 1 + Breakdown.UpcardKeys.Count + Breakdown.StartingTotalKeys.Count, lines.Length);
-        Assert.Equal("Total,,4,40,15,-37.5,50,25,25,25,25,50", lines[1]);
-        Assert.Contains("DealerUpcard,10,2,20,10,-50,50,0,50,0,0,50", lines);
-        Assert.Contains("StartingTotal,Blackjack,1,10,15,-150,100,0,0,100,0,", lines);
-        Assert.Contains("StartingTotal,hard 4,0,0,0,,,,,,,", lines);
-        Assert.All(lines, l => Assert.Equal(12, l.Split(',').Length));
+        Assert.Equal("Total,,4,40,40,15,-37.5,50,25,25,25,25,50,0,0", lines[1]);
+        Assert.Contains("DealerUpcard,10,2,20,20,10,-50,50,0,50,0,0,50,0,0", lines);
+        Assert.Contains("StartingTotal,Blackjack,1,10,10,15,-150,100,0,0,100,0,,0,0", lines);
+        Assert.Contains("StartingTotal,hard 4,0,0,0,0,,,,,,,,,", lines);
+        Assert.All(lines, l => Assert.Equal(15, l.Split(',').Length));
     }
 }

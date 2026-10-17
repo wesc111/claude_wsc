@@ -56,4 +56,24 @@ public sealed class HandTests
         Assert.False(hand.IsBlackjack);
         Assert.Empty(hand.Cards);
     }
+
+    [Theory]
+    [InlineData("8 8", true)]
+    [InlineData("K 10", true)]
+    [InlineData("Q J", true)]
+    [InlineData("A A", true)]
+    [InlineData("9 10", false)]
+    [InlineData("8 8 8", false)]
+    [InlineData("8", false)]
+    public void IsPair(string cards, bool expected) =>
+        Assert.Equal(expected, new Hand(Cards.Parse(cards)).IsPair);
+
+    [Fact]
+    public void HandFromSplitIsNeverABlackjack()
+    {
+        var hand = new Hand(Cards.Parse("A K")) { IsFromSplit = true };
+
+        Assert.Equal(21, hand.Total);
+        Assert.False(hand.IsBlackjack);
+    }
 }

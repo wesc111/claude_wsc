@@ -34,7 +34,8 @@ public sealed class SimulatorTests
         var result = await Simulator.RunAsync(Options(rounds: 12_345, workers: workers), seed: 1, Ct);
 
         Assert.Equal(12_345, result.Statistics.Total.Rounds);
-        Assert.Equal(123_450m, result.Statistics.Total.Wagered);
+        Assert.Equal(123_450m, result.Statistics.Total.InitialBets);
+        Assert.True(result.Statistics.Total.Wagered > result.Statistics.Total.InitialBets, "basic doubles and splits");
         Assert.Equal(12_345, result.Statistics.ByDealerUpcard.Sum(b => b.Rounds));
         Assert.Equal(12_345, result.Statistics.ByStartingTotal.Sum(b => b.Rounds));
     }

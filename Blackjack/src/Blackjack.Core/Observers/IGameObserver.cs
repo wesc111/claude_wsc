@@ -27,6 +27,16 @@ public interface IGameObserver
     /// <param name="ct">Cancels the round.</param>
     ValueTask OnHoleCardRevealedAsync(HoleCardRevealedNotification notification, CancellationToken ct) => ValueTask.CompletedTask;
 
+    /// <summary>A pair has been split: the second card moved to a new hand appended at the end.</summary>
+    /// <param name="notification">Indices of the split and the new hand, and the moved card.</param>
+    /// <param name="ct">Cancels the round.</param>
+    ValueTask OnHandSplitAsync(HandSplitNotification notification, CancellationToken ct) => ValueTask.CompletedTask;
+
+    /// <summary>A hand has been doubled; exactly one more card follows.</summary>
+    /// <param name="notification">Hand index and new bet.</param>
+    /// <param name="ct">Cancels the round.</param>
+    ValueTask OnHandDoubledAsync(HandDoubledNotification notification, CancellationToken ct) => ValueTask.CompletedTask;
+
     /// <summary>The player's turn for one hand has ended.</summary>
     /// <param name="notification">The final state of the hand.</param>
     /// <param name="ct">Cancels the round.</param>

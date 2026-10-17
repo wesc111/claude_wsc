@@ -68,7 +68,7 @@ public sealed class TableRendererTests
         var n = decimal.Parse(net, System.Globalization.CultureInfo.InvariantCulture);
         var b = decimal.Parse(bankroll, System.Globalization.CultureInfo.InvariantCulture);
         await _renderer.OnHandSettledAsync(new HandSettledNotification(0, outcome, n), Ct);
-        await _renderer.OnRoundCompletedAsync(new RoundResult(25m, [], [], 0, n, b), Ct);
+        await _renderer.OnRoundCompletedAsync(new RoundResult(25m, [], [], 0, n, b, 25m), Ct);
 
         Assert.Equal(expected, Lines[^1]);
     }
@@ -99,5 +99,64 @@ public sealed class TableRendererTests
         await DealAsync("2S", "3S", "4S");
 
         Assert.Equal(["Dealer:  3♠ [??]", "You:     2♠ 4♠   (6)"], Lines);
+    }
+
+    private Task DealPlayerAsync(int hand, string card) =>
+        _renderer.OnCardDealtAsync(new CardDealtNotification(CardRecipient.Player(hand), Cards.ParseOne(card), true), Ct).AsTask();
+
+    [Fact]
+    public async Task SplitShowsBothHands()
+    {
+        await DealAsync("8S", "10S", "8H");
+        await _renderer.OnHandSplitAsync(new HandSplitNotification(0, 1, Cards.ParseOne("8H")), Ct);
+        await DealPlayerAsync(0, "3S");
+        await DealPlayerAsync(1, "AS");
+
+        Assert.Equal(
+            ["You split into Hand 1 and Hand 2.", "Hand 1:  8♠ 3♠   (11)", "Hand 2:  8♥ A♠   (soft 19)"],
+            Lines[^3..]);
+    }
+
+    [Fact]
+    public async Task AceAndTenAfterSplitIsNoBlackjack()
+    {
+        await DealAsync("AS", "10S", "AH");
+        await _renderer.OnHandSplitAsync(new HandSplitNotification(0, 1, Cards.ParseOne("AH")), Ct);
+        await DealPlayerAsync(0, "KS");
+
+        Assert.Equal("Hand 1:  A♠ K♠   (soft 21)", Lines[^1]);
+    }
+
+    [Fact]
+    public async Task DoubleIsAnnounced()
+    {
+        await DealAsync("6S", "10S", "5S");
+        await _renderer.OnHandDoubledAsync(new HandDoubledNotification(0, 50m), Ct);
+
+        Assert.Equal("You double: bet 50, one more card.", Lines[^1]);
+    }
+
+    [Fact]
+    public async Task DoubleAfterSplitNamesTheHand()
+    {
+        await DealAsync("8S", "10S", "8H");
+        await _renderer.OnHandSplitAsync(new HandSplitNotification(0, 1, Cards.ParseOne("8H")), Ct);
+        await _renderer.OnHandDoubledAsync(new HandDoubledNotification(0, 20m), Ct);
+
+        Assert.Equal("Hand 1 doubled: bet 20, one more card.", Lines[^1]);
+    }
+
+    [Fact]
+    public async Task ResultPerHandAfterASplit()
+    {
+        await DealAsync("8S", "10S", "8H");
+        await _renderer.OnHandSplitAsync(new HandSplitNotification(0, 1, Cards.ParseOne("8H")), Ct);
+        await _renderer.OnHandSettledAsync(new HandSettledNotification(0, HandOutcome.Win, 20m), Ct);
+        await _renderer.OnHandSettledAsync(new HandSettledNotification(1, HandOutcome.PlayerBust, -10m), Ct);
+        await _renderer.OnRoundCompletedAsync(new RoundResult(30m, [], [], 0, 10m, 1010m, 10m), Ct);
+
+        Assert.Equal(
+            ["Hand 1:  You win  +20", "Hand 2:  Bust – you lose  -10", "Result:  +10   Bankroll: 1010"],
+            Lines[^3..]);
     }
 }

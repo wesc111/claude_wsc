@@ -12,8 +12,14 @@ public sealed class ConsolePlayerTests
 
     private static BetContext Bet(decimal bankroll = 1000m) => new(bankroll, Rules.Default);
 
+    private static readonly IReadOnlySet<PlayerAction> All =
+        new HashSet<PlayerAction> { PlayerAction.Hit, PlayerAction.Stand, PlayerAction.Double, PlayerAction.Split };
+
     private static DecisionContext Decision() =>
         new(Cards.Parse("10 6"), 16, false, Cards.ParseOne("9"), HitOrStand);
+
+    private static DecisionContext Decision(IReadOnlySet<PlayerAction> allowed, int handIndex = 0, int handCount = 1) =>
+        new(Cards.Parse("8 8"), 16, false, Cards.ParseOne("9"), allowed, handIndex, handCount);
 
     private int Count(string text) => _output.ToString().Split(text).Length - 1;
 
@@ -140,5 +146,51 @@ public sealed class ConsolePlayerTests
         var player = new ConsolePlayer(new BlockingReader(cts.Cancel), _output);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => player.DecideAsync(Decision(), cts.Token));
+    }
+
+    [Fact]
+    public async Task PromptListsOnlyAllowedActions()
+    {
+        await Player("s").DecideAsync(Decision(All), Ct);
+
+        Assert.Equal("(h)it, (s)tand, (d)ouble, s(p)lit, (q)uit after this round: ", _output.ToString());
+    }
+
+    [Theory]
+    [InlineData("d", PlayerAction.Double)]
+    [InlineData("D", PlayerAction.Double)]
+    [InlineData("p", PlayerAction.Split)]
+    [InlineData("P", PlayerAction.Split)]
+    public async Task DoubleAndSplitCommands(string input, PlayerAction expected) =>
+        Assert.Equal(expected, await Player(input).DecideAsync(Decision(All), Ct));
+
+    [Fact]
+    public async Task CommandThatIsNotAllowedRepeatsThePrompt()
+    {
+        var action = await Player("d", "p", "s").DecideAsync(Decision(), Ct);
+
+        Assert.Equal(PlayerAction.Stand, action);
+        Assert.Equal(1, Count("Double is not possible now. Please enter h, s or q."));
+        Assert.Equal(1, Count("Split is not possible now. Please enter h, s or q."));
+    }
+
+    [Fact]
+    public async Task PromptNamesTheHandAfterASplit()
+    {
+        await Player("s").DecideAsync(Decision(HitOrStand, handIndex: 1, handCount: 2), Ct);
+
+        Assert.StartsWith("Hand 2 – (h)it, (s)tand, (q)uit after this round: ", _output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ResplittableAcesOfferOnlyStandAndSplit()
+    {
+        var standOrSplit = new HashSet<PlayerAction> { PlayerAction.Stand, PlayerAction.Split };
+
+        var action = await Player("h", "p").DecideAsync(Decision(standOrSplit), Ct);
+
+        Assert.Equal(PlayerAction.Split, action);
+        Assert.StartsWith("(s)tand, s(p)lit, (q)uit after this round: ", _output.ToString(), StringComparison.Ordinal);
+        Assert.Equal(1, Count("Hit is not possible now. Please enter s, p or q."));
     }
 }

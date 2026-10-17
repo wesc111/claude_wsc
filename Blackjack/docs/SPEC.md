@@ -1,8 +1,10 @@
 # Blackjack – Requirements Specification
 
-Version 1.1 · Status: Draft for implementation with Claude Code
+Version 1.2 · Status: Draft for implementation with Claude Code
 
 Changes in 1.1: outcome names unified (`DealerBlackjack` added), player can leave via `null` bet, cancellation semantics, async `IGameObserver` instead of .NET events, hole-card visibility rules, `HandCompleted` split into `PlayerHandFinished`/`HandSettled`, unlimited bankroll via `null`, bet validation defined, `Rules` shape with H17 / payout / decks / penetration supported from M1 (no-peek rejected), shoe behaviour (2.6) and `FixedCardSource` defined.
+
+Changes in 1.2: M2 and M3 decisions (console app, simulation, measured reference values); M4 rules as `Rules` properties, allowed actions, split order (new hands appended), acceptance criteria, full basic strategy tables, house edge per initial bet.
 
 ---
 
@@ -161,9 +163,9 @@ Blackjack.slnx
 | `Card` | readonly record struct | Suit, Rank, `IsTenValued`, base value |
 | `ICardSource` | interface | `Card Draw()`, `bool NeedsReshuffle`, `void Shuffle()`, `int CardsRemaining` |
 | `Shoe` | class | Implements `ICardSource`; n decks, Fisher–Yates shuffle, penetration, seedable `Random` (see 2.6) |
-| `Hand` | class | Cards, `Total`, `IsSoft`, `IsBlackjack`, `IsBust`; later `CanSplit`, `IsFromSplit`, `IsDoubled` |
+| `Hand` | class | Cards, `Total`, `IsSoft`, `IsBlackjack`, `IsBust`; from M4 `IsPair`, `IsFromSplit` (see 7.4) |
 | `Rules` | record | Table rules and bet limits (see 2.1) |
-| `PlayerAction` | enum | `Hit`, `Stand` (later `Double`, `Split`, `Surrender`) |
+| `PlayerAction` | enum | `Hit`, `Stand`; from M4 `Double`, `Split` (`Surrender` is a non-goal) |
 | `HandOutcome` | enum | `BlackjackWin`, `Win`, `DealerBust`, `Push`, `Loss`, `PlayerBust`, `DealerBlackjack`; extension methods `IsWin()`, `IsLoss()` |
 | `DealerStrategy` | class | Decides dealer Hit/Stand according to `Rules` |
 | `BlackjackGame` | class | Engine: runs a round, peek, settlement, bankroll |
@@ -199,7 +201,7 @@ public sealed record DecisionContext(
     IReadOnlySet<PlayerAction> AllowedActions);
 ```
 
-- The engine only offers actions that are currently legal (M1: always `Hit` and `Stand`).
+- The engine only offers actions that are currently legal (M1: always `Hit` and `Stand`; from M4 see 7.2).
 - If a strategy returns an action not in `AllowedActions`, the engine throws an `InvalidOperationException`.
 - A player hand may later consist of several hands (split). The engine must therefore internally manage a **list of player hands**, even if M1 only ever uses one.
 
@@ -400,7 +402,7 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 
 ### 6.3 Simulator
 
-- Command-line tool `blackjack-sim`: `--strategy basic|mimic|neverbust` (required), `--rounds` (default 1,000,000), `--seed` (default: random, printed so the run can be repeated), `--bet` (default 10), `--workers` (default: number of CPU cores), `--csv <file>`, `--help`.
+- Command-line tool `blackjack-sim`: `--strategy basic|basic-hs|mimic|neverbust` (required; `basic` = full basic strategy of 7.6 from M4, `basic-hs` = Hit/Stand table of 6.2), `--rounds` (default 1,000,000), `--seed` (default: random, printed so the run can be repeated), `--bet` (default 10), `--workers` (default: number of CPU cores), `--csv <file>`, `--help`.
 - Optional rule arguments: `--decks`, `--h17`, `--payout`, `--penetration` (defaults as in 2.1).
 - The table limits are set to the bet (`MinBet = MaxBet = bet`).
 - Parallel execution with independent engine instances and derived seeds; results reproducible for identical parameters (including the number of workers). Worker *i* plays a fixed share of the rounds with a seed derived from the main seed.
@@ -415,7 +417,7 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 | Rounds | number of rounds played |
 | Total wagered | sum of all bets |
 | Net result | sum of all net payouts |
-| House edge | −net result / total wagered, in % |
+| House edge | −net result / sum of initial bets, in % (from M4, see 7.7; identical to −net / total wagered without Double and Split) |
 | Standard error, 95 % CI | of the per-round result (in % of bet) |
 | Win / loss / push rates | in % of rounds |
 | Blackjack rate | player Blackjacks in % of rounds |
@@ -423,12 +425,12 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 | Breakdown | result per dealer upcard (2–9, 10 for all ten-valued cards, A) and per player starting total (`hard 4` … `hard 20`, `soft 12` … `soft 20`, `Blackjack`); each row with rounds, house edge, win/loss/push rates |
 
 - Statistics are computed from the returned `RoundResult`s; money totals in `decimal`, variance in `double` (in units of the bet).
-- Output as a formatted table on the console, optionally as CSV (`--csv`): one table with columns `Category,Key,Rounds,Wagered,Net,HouseEdgePct,WinPct,LossPct,PushPct,BlackjackPct,PlayerBustPct,DealerBustPct` and rows `Total`, `DealerUpcard/<key>`, `StartingTotal/<key>`; invariant culture.
+- Output as a formatted table on the console, optionally as CSV (`--csv`): one table with columns `Category,Key,Rounds,InitialBets,Wagered,Net,HouseEdgePct,WinPct,LossPct,PushPct,BlackjackPct,PlayerBustPct,DealerBustPct,DoublePct,SplitPct` and rows `Total`, `DealerUpcard/<key>`, `StartingTotal/<key>`; invariant culture.
 - Plausibility checks (tests, 1 million rounds, fixed seed; 95 % CI ≈ ±0.23 %):
   - `MimicDealerPlayer` yields a house edge of approx. 5–6 %.
-  - `BasicStrategyPlayer` (Hit/Stand only): 2.37 % ± 0.4 %.
+  - `BasicStrategyPlayer` with the Hit/Stand table (`basic-hs`): 2.37 % ± 0.4 %.
   - `NeverBustPlayer`: 6.03 % ± 0.4 %.
-  - Ranking: basic < mimic < never-bust. (Planned as basic < never-bust < mimic; the measurement showed that without doubling, standing on 12–16 against a dealer 7–A costs never-bust more than mimic-the-dealer loses by busting.)
+  - Ranking: basic-hs < mimic < never-bust. (Planned as basic < never-bust < mimic; the measurement showed that without doubling, standing on 12–16 against a dealer 7–A costs never-bust more than mimic-the-dealer loses by busting.)
   - Player Blackjack rate ≈ 4.75 % (theory for 6 decks), never-bust never busts.
   - 1 million rounds take less than 60 seconds.
 - Reference values measured in M3 with 2 × 20 million rounds (seeds 11 and 12, defaults of 2.1): basic 2.36 % / 2.39 %, mimic 5.68 % / 5.70 %, never-bust 6.04 % / 6.02 % (SE 0.02 % each). Speed: about 6 million rounds per second on an Apple Silicon Mac (Release build).
@@ -439,6 +441,8 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 
 Extension of the rules and engine; all existing tests must remain green.
 
+### 7.1 Rules
+
 | Rule | Value |
 |---|---|
 | Double | only on the first two cards of a hand; bet doubled, exactly one more card, then automatic Stand |
@@ -447,12 +451,117 @@ Extension of the rules and engine; all existing tests must remain green.
 | Split Aces | each Ace receives exactly one more card, then automatic Stand |
 | DAS | Double after split allowed (except on split Aces) |
 | Blackjack after split | counts as 21, not as Blackjack (paid 1:1) |
-| Peek | dealer Blackjack: player loses only the original bet |
+| Peek | the dealer checks for Blackjack before any player decision, so on a dealer Blackjack the round ends before any Double or Split and the player loses only the original bet |
 
-- `DecisionContext` is extended accordingly (hand index, number of hands, `AllowedActions` includes Double/Split only when legal).
-- Bankroll must cover additional bets; otherwise Double/Split are not offered.
-- Basic strategy table extended with Double and pair-split decisions.
-- Simulation plausibility check: Basic strategy with these rules yields a house edge of approx. 0.4–0.5 %.
+The values above are the defaults of three new `Rules` properties, all fully supported:
+
+| Property | Default | Range |
+|---|---|---|
+| `DoubleAfterSplit` | `true` | – |
+| `MaxSplitHands` | 4 | 1–4 (1 = no splitting) |
+| `ResplitAces` | `false` | – |
+
+### 7.2 Allowed actions and bankroll
+
+- `Hit`, `Stand`: as before. The turn ends automatically at 21 and on split Aces after their one card.
+- `Double`: exactly two cards; not on split Aces; on a hand from a split only with `DoubleAfterSplit`; additional bet covered.
+- `Split`: `Hand.IsPair` (two cards of equal value); fewer than `MaxSplitHands` hands; split Aces only with `ResplitAces`; additional bet covered.
+- Additional bet covered: additional bet ≤ bankroll − sum of the bets already placed in this round. With unlimited bankroll (`null`) always covered.
+- `Hand.IsPair` only describes the cards; whether a split is allowed is decided by the engine.
+
+### 7.3 Round flow with several hands
+
+- **Double:** the hand's bet is doubled (`HandDoubled`), the hand receives exactly one card, then its turn ends.
+- **Split:** the second card moves to a new hand that is **appended** at the end (`HandSplit`), so the indices of existing hands never change. The current hand immediately receives a new card; the new hand receives its second card when its turn starts. Hands are played in ascending index order.
+- After all hands: the hole card is revealed; the dealer plays out if at least one hand is not bust. Each hand is settled with its own bet (`HandSettled` per hand).
+- A Blackjack is only possible on the initial (unsplit) hand.
+- Cancellation or any other abort restores the bankroll as before (2.5).
+
+### 7.4 Types
+
+- `PlayerAction`: + `Double`, `Split`.
+- `Hand`: + `IsFromSplit` (a split hand is never a Blackjack), `IsPair`.
+- `DecisionContext`: + `HandIndex`, `HandCount` (optional trailing parameters, default 0 and 1).
+- `HandResult`: + `IsDoubled`, `IsFromSplit`. `RoundResult`: + `InitialBet`; `TotalBet` includes the additional bets of Double and Split.
+- `IGameObserver`: + `OnHandSplitAsync` (hand index, new hand index, moved card) and `OnHandDoubledAsync` (hand index, new bet), both with empty default implementations.
+
+### 7.5 Acceptance criteria – Double and Split
+
+| Case | Expected |
+|---|---|
+| Double on two cards | Bet doubled, exactly one card dealt, no further decision, net ±2 × bet |
+| Hand with three cards | Double not offered |
+| Bankroll does not cover the additional bet | Double and Split not offered |
+| Split 8,8 | Two hands, each with its own bet, played and settled separately |
+| Split K,10 | Allowed (equal value) |
+| Two cards of different value | Split not offered |
+| Re-split | Possible up to 4 hands; with 4 hands Split is no longer offered |
+| Split Aces | Each Ace receives exactly one card, no decision is requested, no re-split |
+| A + 10 after a split | `Win`, paid 1:1, not `BlackjackWin` |
+| Double after split (DAS) | Offered on a split hand, not on split Aces |
+| Dealer Blackjack (peek) | No decision requested, only the original bet is lost |
+| All split hands bust | Dealer draws no card; if one hand stands, the dealer plays out |
+| Strategy returns Double or Split when not allowed | `InvalidOperationException` |
+| Notifications | `HandSplit` / `HandDoubled` in order, `CardDealt` with the correct hand index, `PlayerHandFinished` exactly once per hand |
+| Cancellation during a split round | Bankroll restored |
+| `DoubleAfterSplit = false` | Double not offered on split hands |
+| `MaxSplitHands = 2` | No re-split |
+| `ResplitAces = true` | Split Aces can be split again |
+| `MaxSplitHands` outside 1–4 | `ArgumentOutOfRangeException` |
+
+### 7.6 Basic strategy with Double and Split (6 decks, S17, DAS, no surrender)
+
+Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available as strategy `basic-hs`. Codes: `H` Hit, `S` Stand, `D` Double (otherwise Hit), `Ds` Double (otherwise Stand), `P` Split, `-` no split (use the total tables). If Double or Split is not allowed, the fallback action is used.
+
+**Hard totals**
+
+| Player | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | A |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 4–8 | H | H | H | H | H | H | H | H | H | H |
+| 9 | H | D | D | D | D | H | H | H | H | H |
+| 10 | D | D | D | D | D | D | D | D | H | H |
+| 11 | D | D | D | D | D | D | D | D | D | H |
+| 12 | H | H | S | S | S | H | H | H | H | H |
+| 13–16 | S | S | S | S | S | H | H | H | H | H |
+| 17–21 | S | S | S | S | S | S | S | S | S | S |
+
+**Soft totals**
+
+| Player | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | A |
+|---|---|---|---|---|---|---|---|---|---|---|
+| soft 12 | H | H | H | H | H | H | H | H | H | H |
+| soft 13–14 | H | H | H | D | D | H | H | H | H | H |
+| soft 15–16 | H | H | D | D | D | H | H | H | H | H |
+| soft 17 | H | D | D | D | D | H | H | H | H | H |
+| soft 18 | S | Ds | Ds | Ds | Ds | S | S | H | H | H |
+| soft 19–21 | S | S | S | S | S | S | S | S | S | S |
+
+**Pairs**
+
+| Pair | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | A |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2,2 / 3,3 | P | P | P | P | P | P | - | - | - | - |
+| 4,4 | - | - | - | P | P | - | - | - | - | - |
+| 5,5 | - | - | - | - | - | - | - | - | - | - |
+| 6,6 | P | P | P | P | P | - | - | - | - | - |
+| 7,7 | P | P | P | P | P | P | - | - | - | - |
+| 8,8 | P | P | P | P | P | P | P | P | P | P |
+| 9,9 | P | P | P | P | P | S | P | P | S | S |
+| 10,10 | - | - | - | - | - | - | - | - | - | - |
+| A,A | P | P | P | P | P | P | P | P | P | P |
+
+### 7.7 Simulation
+
+- **House edge = −net result / sum of initial bets** (standard definition, also used for the 0.4–0.5 % below). The total wagered including Double and Split is reported as well.
+- New rates: Double rate and Split rate (in % of rounds).
+- A + 10 after a split does not count as player Blackjack; the starting total of a split round is the original pair.
+- Plausibility check: `basic` with 10 million rounds (95 % CI ≈ ±0.07 %) yields a house edge between 0.3 % and 0.6 %; also basic < basic-hs.
+- Reference values measured in M4 with 2 × 20 million rounds (seeds 11 and 12, defaults): `basic` 0.41 % / 0.43 % (SE 0.03 %), Double rate 10.3 %, Split rate 2.5 %, total wagered 1.13 × initial bets. `basic-hs` reproduces the M3 value exactly (2.36 % with seed 11).
+
+### 7.8 Console app
+
+- New commands `d` = Double and `p` = Split; the prompt only lists the actions currently allowed, e.g. `(h)it, (s)tand, (d)ouble, s(p)lit, (q)uit after this round:`.
+- With several hands, they are shown as "Hand 1", "Hand 2", …; the result is shown per hand plus a total line with the bankroll.
 
 ---
 

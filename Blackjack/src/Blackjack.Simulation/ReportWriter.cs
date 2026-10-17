@@ -18,13 +18,15 @@ internal static class ReportWriter
         output.WriteLine($"Rules: {DescribeRules(rules)}");
         output.WriteLine($"Time: {result.Elapsed.TotalSeconds.ToString("0.00", Invariant)} s ({Count((long)result.RoundsPerSecond)} rounds/s)");
         output.WriteLine();
-        output.WriteLine($"Total wagered      {Money(total.Wagered)}");
+        output.WriteLine($"Initial bets       {Money(total.InitialBets)}");
+        output.WriteLine($"Total wagered      {Money(total.Wagered)}   (including Double and Split)");
         output.WriteLine($"Net result         {Money(total.Net)}");
         output.WriteLine($"House edge         {Percent(total.HouseEdgePercent)}   (SE {Percent(total.StandardErrorPercent)}, 95 % CI {Percent(total.ConfidenceLowPercent)} to {Percent(total.ConfidenceHighPercent)})");
         output.WriteLine($"Win / loss / push  {Percent(total.WinPercent)} / {Percent(total.LossPercent)} / {Percent(total.PushPercent)}");
         output.WriteLine($"Blackjack rate     {Percent(total.BlackjackPercent)}");
         output.WriteLine($"Player bust rate   {Percent(total.PlayerBustPercent)}");
         output.WriteLine($"Dealer bust rate   {Percent(total.DealerBustPercent)}   (of {Count(total.DealerPlayed)} rounds the dealer played out)");
+        output.WriteLine($"Double / split     {Percent(total.DoublePercent)} / {Percent(total.SplitPercent)}   (of rounds)");
         output.WriteLine();
         WriteBreakdown(output, "By dealer upcard", "Upcard", Breakdown.UpcardKeys, result.Statistics.ByDealerUpcard);
         output.WriteLine();

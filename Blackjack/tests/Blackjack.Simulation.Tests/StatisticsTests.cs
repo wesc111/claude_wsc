@@ -178,10 +178,69 @@ public sealed class StatisticsTests
     public void UnknownBreakdownKeyThrows() =>
         Assert.Throws<ArgumentException>(() => new SimulationStatistics().StartingTotal("hard 21"));
 
+    [Fact]
+    public void HouseEdgeIsPerInitialBet()
+    {
+        // Doubled win: +20 on an initial bet of 10; plus a plain loss of 10. Net +10 on 20 initial bets.
+        var s = new SimulationStatistics();
+        s.Record(Rounds.CreateHands("10 7", 10m, ("6 5 10", HandOutcome.Win, 20m, 20m, true)));
+        s.Record(Rounds.Create("10 7", "10 8", HandOutcome.Loss, -10m));
+
+        Assert.Equal(20m, s.Total.InitialBets);
+        Assert.Equal(30m, s.Total.Wagered);
+        Assert.Equal(-50.0, s.Total.HouseEdgePercent, 10);
+        Assert.Equal(50.0, s.Total.DoublePercent, 10);
+        Assert.Equal(0.0, s.Total.SplitPercent, 10);
+    }
+
+    [Fact]
+    public void SplitRound()
+    {
+        // A A split: A K (21, not a Blackjack) wins, A 5 loses; dealer 10 7.
+        var s = new SimulationStatistics();
+        s.Record(Rounds.CreateHands("10 7", 10m,
+            ("A K", HandOutcome.Win, 10m, 10m, false),
+            ("A 5", HandOutcome.Loss, 10m, -10m, false)));
+
+        var t = s.Total;
+        Assert.Equal(1, t.Rounds);
+        Assert.Equal(2, t.Hands);
+        Assert.Equal(0, t.Blackjacks);
+        Assert.Equal(100.0, t.SplitPercent, 10);
+        Assert.Equal(1, t.Wins);
+        Assert.Equal(1, t.Losses);
+        Assert.Equal(1, t.DealerPlayed);
+        Assert.Equal(1, s.StartingTotal("soft 12").Rounds);
+    }
+
+    [Fact]
+    public void SplitTensCountAsHardTwentyStart()
+    {
+        var s = new SimulationStatistics();
+        s.Record(Rounds.CreateHands("9 8", 10m,
+            ("K 9", HandOutcome.Win, 10m, 10m, false),
+            ("10 A", HandOutcome.Win, 10m, 10m, false)));
+
+        Assert.Equal(1, s.StartingTotal("hard 20").Rounds);
+        Assert.Equal(0, s.StartingTotal("Blackjack").Rounds);
+        Assert.Equal(0, s.Total.Blackjacks);
+    }
+
+    [Fact]
+    public void AllSplitHandsBustMeansDealerDidNotPlay()
+    {
+        var facts = RoundFacts.From(Rounds.CreateHands("10 6", 10m,
+            ("8 6 K", HandOutcome.PlayerBust, 10m, -10m, false),
+            ("8 6 Q", HandOutcome.PlayerBust, 10m, -10m, false)));
+
+        Assert.False(facts.DealerPlayed);
+    }
+
     internal static void AssertSame(StatisticsBucket expected, StatisticsBucket actual)
     {
         Assert.Equal(expected.Rounds, actual.Rounds);
         Assert.Equal(expected.Hands, actual.Hands);
+        Assert.Equal(expected.InitialBets, actual.InitialBets);
         Assert.Equal(expected.Wagered, actual.Wagered);
         Assert.Equal(expected.Net, actual.Net);
         Assert.Equal(expected.Wins, actual.Wins);
@@ -191,6 +250,8 @@ public sealed class StatisticsTests
         Assert.Equal(expected.PlayerBusts, actual.PlayerBusts);
         Assert.Equal(expected.DealerPlayed, actual.DealerPlayed);
         Assert.Equal(expected.DealerBusts, actual.DealerBusts);
+        Assert.Equal(expected.DoubleRounds, actual.DoubleRounds);
+        Assert.Equal(expected.SplitRounds, actual.SplitRounds);
         Assert.Equal(expected.StandardErrorPercent, actual.StandardErrorPercent);
     }
 }

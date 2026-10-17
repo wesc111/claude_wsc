@@ -7,10 +7,14 @@ namespace Blackjack.Core;
 /// <param name="Bet">The bet on this hand.</param>
 /// <param name="Outcome">The outcome.</param>
 /// <param name="Net">Net amount won (positive) or lost (negative).</param>
+/// <param name="IsDoubled">Whether the hand was doubled; <paramref name="Bet"/> then includes the additional bet.</param>
+/// <param name="IsFromSplit">Whether the hand was created by splitting a pair.</param>
 public sealed record HandResult(
     IReadOnlyList<Card> Cards,
     int Total,
     bool IsSoft,
     decimal Bet,
     HandOutcome Outcome,
-    decimal Net);
+    decimal Net,
+    bool IsDoubled = false,
+    bool IsFromSplit = false);

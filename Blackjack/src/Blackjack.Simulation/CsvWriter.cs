@@ -7,7 +7,7 @@ namespace Blackjack.Simulation;
 internal static class CsvWriter
 {
     /// <summary>The header line.</summary>
-    public const string Header = "Category,Key,Rounds,Wagered,Net,HouseEdgePct,WinPct,LossPct,PushPct,BlackjackPct,PlayerBustPct,DealerBustPct";
+    public const string Header = "Category,Key,Rounds,InitialBets,Wagered,Net,HouseEdgePct,WinPct,LossPct,PushPct,BlackjackPct,PlayerBustPct,DealerBustPct,DoublePct,SplitPct";
 
     /// <summary>Writes the header, the total row and one row per breakdown key.</summary>
     public static void Write(TextWriter output, SimulationStatistics statistics)
@@ -34,6 +34,7 @@ internal static class CsvWriter
             category,
             key,
             b.Rounds.ToString(inv),
+            b.InitialBets.ToString("0.##", inv),
             b.Wagered.ToString("0.##", inv),
             b.Net.ToString("0.##", inv),
             Pct(b.HouseEdgePercent),
@@ -43,6 +44,8 @@ internal static class CsvWriter
             Pct(b.BlackjackPercent),
             Pct(b.PlayerBustPercent),
             Pct(b.DealerBustPercent),
+            Pct(b.DoublePercent),
+            Pct(b.SplitPercent),
         ];
         output.WriteLine(string.Join(",", fields));
     }

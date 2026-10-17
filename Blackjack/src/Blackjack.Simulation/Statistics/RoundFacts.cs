@@ -9,8 +9,9 @@ internal readonly record struct RoundFacts(bool PlayerBlackjack, bool DealerPlay
     /// <summary>Derives the facts from a round result.</summary>
     public static RoundFacts From(RoundResult result)
     {
+        // A + 10 after a split is not a Blackjack (SPEC 7.1).
         var first = result.PlayerHands[0];
-        var playerBlackjack = first.Cards.Count == 2 && first.Total == 21;
+        var playerBlackjack = result.PlayerHands.Count == 1 && !first.IsFromSplit && first.Cards.Count == 2 && first.Total == 21;
         var dealerBlackjack = result.DealerCards.Count == 2 && result.DealerTotal == 21;
         var anyHandStanding = false;
         foreach (var hand in result.PlayerHands)

@@ -165,7 +165,10 @@ public sealed class BlackjackGameRoundTests
         Assert.Equal(17, context.PlayerTotal);
         Assert.True(context.IsSoft);
         Assert.Equal(Cards.ParseOne("9"), context.DealerUpcard);
-        Assert.Equal(new HashSet<PlayerAction> { Hit, Stand }, context.AllowedActions);
+        // Since M4 a two-card hand may also be doubled (SPEC 7.2); A, 6 is no pair, so no Split.
+        Assert.Equal(new HashSet<PlayerAction> { Hit, Stand, PlayerAction.Double }, context.AllowedActions);
+        Assert.Equal(0, context.HandIndex);
+        Assert.Equal(1, context.HandCount);
     }
 
     [Fact]

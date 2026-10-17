@@ -25,6 +25,22 @@ public sealed class RecordingObserver : IGameObserver
 
     public List<RoundResult> RoundsCompleted { get; } = [];
 
+    public List<HandSplitNotification> Splits { get; } = [];
+
+    public List<HandDoubledNotification> Doubles { get; } = [];
+
+    public ValueTask OnHandSplitAsync(HandSplitNotification notification, CancellationToken ct)
+    {
+        Splits.Add(notification);
+        return Record("HandSplit");
+    }
+
+    public ValueTask OnHandDoubledAsync(HandDoubledNotification notification, CancellationToken ct)
+    {
+        Doubles.Add(notification);
+        return Record("HandDoubled");
+    }
+
     public ValueTask OnShoeShuffledAsync(CancellationToken ct) => Record("ShoeShuffled");
 
     public ValueTask OnRoundStartedAsync(RoundStartedNotification notification, CancellationToken ct)

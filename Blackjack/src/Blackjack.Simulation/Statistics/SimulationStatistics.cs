@@ -26,10 +26,12 @@ internal sealed class SimulationStatistics
     {
         ArgumentNullException.ThrowIfNull(result);
         var facts = RoundFacts.From(result);
+        // After a split, hand 0 keeps the first original card and the pair had equal value: the start was that card twice.
         var cards = result.PlayerHands[0].Cards;
+        var second = result.PlayerHands.Count > 1 ? cards[0] : cards[1];
         Total.Add(result, facts);
         _byUpcard[Breakdown.UpcardIndex(result.DealerCards[0])].Add(result, facts);
-        _byStartingTotal[Breakdown.StartingTotalIndex(cards[0], cards[1])].Add(result, facts);
+        _byStartingTotal[Breakdown.StartingTotalIndex(cards[0], second)].Add(result, facts);
     }
 
     /// <summary>Adds all rounds of <paramref name="other"/>.</summary>

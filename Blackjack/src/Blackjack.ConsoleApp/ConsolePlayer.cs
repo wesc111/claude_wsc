@@ -56,32 +56,53 @@ internal sealed class ConsolePlayer(TextReader input, TextWriter output) : IPlay
         }
     }
 
+    // Commands in prompt order: key, prompt text, action.
+    private static readonly (string Key, string Label, PlayerAction Action)[] Commands =
+    [
+        ("h", "(h)it", PlayerAction.Hit),
+        ("s", "(s)tand", PlayerAction.Stand),
+        ("d", "(d)ouble", PlayerAction.Double),
+        ("p", "s(p)lit", PlayerAction.Split),
+    ];
+
     /// <inheritdoc />
     public async Task<PlayerAction> DecideAsync(DecisionContext context, CancellationToken ct = default)
     {
+        var allowed = Commands.Where(c => context.AllowedActions.Contains(c.Action)).ToArray();
+        var prefix = context.HandCount > 1 ? $"Hand {context.HandIndex + 1} – " : "";
+        var prompt = $"{prefix}{string.Join(", ", allowed.Select(c => c.Label))}, (q)uit after this round: ";
+        var keys = string.Join(", ", allowed.Select(c => c.Key)) + " or q";
+
         while (true)
         {
-            output.Write("(h)it, (s)tand, (q)uit after this round: ");
+            output.Write(prompt);
             var line = await ReadLineAsync(ct);
             if (line is null)
             {
                 // Input has ended: finish the hand safely and leave afterwards.
-                return PlayerAction.Stand;
+                return context.AllowedActions.Contains(PlayerAction.Stand) ? PlayerAction.Stand : allowed[0].Action;
             }
 
-            switch (line.ToLowerInvariant())
+            var key = line.ToLowerInvariant();
+            if (key == "q")
             {
-                case "h" when context.AllowedActions.Contains(PlayerAction.Hit):
-                    return PlayerAction.Hit;
-                case "s" when context.AllowedActions.Contains(PlayerAction.Stand):
-                    return PlayerAction.Stand;
-                case "q":
-                    QuitRequested = true;
-                    output.WriteLine("You will leave the table after this round.");
-                    break;
-                default:
-                    output.WriteLine("Please enter h, s or q.");
-                    break;
+                QuitRequested = true;
+                output.WriteLine("You will leave the table after this round.");
+                continue;
+            }
+
+            var command = Array.Find(Commands, c => c.Key == key);
+            if (command.Key is null)
+            {
+                output.WriteLine($"Please enter {keys}.");
+            }
+            else if (!context.AllowedActions.Contains(command.Action))
+            {
+                output.WriteLine($"{command.Action} is not possible now. Please enter {keys}.");
+            }
+            else
+            {
+                return command.Action;
             }
         }
     }

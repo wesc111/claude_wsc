@@ -9,9 +9,9 @@ internal sealed record SimulationOptions
     /// <summary>The usage text shown for <c>--help</c> and after an invalid argument.</summary>
     public const string Usage =
         """
-        Usage: blackjack-sim --strategy <basic|mimic|neverbust> [options]
+        Usage: blackjack-sim --strategy <basic|basic-hs|mimic|neverbust> [options]
 
-          --strategy <name>       basic, mimic or neverbust (required)
+          --strategy <name>       basic, basic-hs, mimic or neverbust (required)
           --rounds <number>       Number of rounds (default 1,000,000)
           --seed <number>         Seed for reproducible results (default: random, printed)
           --bet <amount>          Flat bet per round (default 10)

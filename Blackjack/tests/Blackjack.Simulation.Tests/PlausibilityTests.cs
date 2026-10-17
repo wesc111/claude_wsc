@@ -1,8 +1,9 @@
 namespace Blackjack.Simulation.Tests;
 
 /// <summary>
-/// SPEC 6.4 – plausibility checks with 1 million rounds and a fixed seed (95 % CI ≈ ±0.2 %).
-/// Reference values from 2 × 20 million rounds: basic 2.37 %, mimic 5.69 %, never-bust 6.03 %.
+/// SPEC 6.4 and 7.7 – plausibility checks with a fixed seed: 1 million rounds (95 % CI ≈ ±0.2 %),
+/// full basic strategy 10 million rounds (≈ ±0.07 %).
+/// Reference values from 2 × 20 million rounds: basic-hs 2.37 %, mimic 5.69 %, never-bust 6.03 %.
 /// </summary>
 public sealed class PlausibilityTests(PlausibilityFixture fixture) : IClassFixture<PlausibilityFixture>
 {
@@ -13,8 +14,22 @@ public sealed class PlausibilityTests(PlausibilityFixture fixture) : IClassFixtu
         Assert.InRange(Edge("mimic"), 5.0, 6.0);
 
     [Fact]
-    public void BasicStrategyHouseEdgeMatchesReference() =>
-        Assert.InRange(Edge("basic"), 2.37 - 0.4, 2.37 + 0.4);
+    public void HitStandBasicStrategyHouseEdgeMatchesReference() =>
+        Assert.InRange(Edge("basic-hs"), 2.37 - 0.4, 2.37 + 0.4);
+
+    [Fact]
+    public void FullBasicStrategyHouseEdgeIsBelowOnePercent() =>
+        Assert.InRange(Edge("basic"), 0.3, 0.6);
+
+    [Fact]
+    public void FullBasicStrategyDoublesAndSplits()
+    {
+        var total = fixture.Results["basic"].Statistics.Total;
+
+        Assert.InRange(total.DoublePercent, 5.0, 15.0);
+        Assert.InRange(total.SplitPercent, 1.0, 5.0);
+        Assert.True(total.Wagered > total.InitialBets);
+    }
 
     [Fact]
     public void NeverBustHouseEdgeMatchesReference() =>
@@ -23,7 +38,8 @@ public sealed class PlausibilityTests(PlausibilityFixture fixture) : IClassFixtu
     [Fact]
     public void Ranking()
     {
-        Assert.True(Edge("basic") < Edge("mimic"), "basic strategy must beat mimic-the-dealer");
+        Assert.True(Edge("basic") < Edge("basic-hs"), "Double and Split must lower the house edge");
+        Assert.True(Edge("basic-hs") < Edge("mimic"), "basic strategy must beat mimic-the-dealer");
         Assert.True(Edge("mimic") < Edge("neverbust"), "mimic-the-dealer must beat never-bust");
     }
 
@@ -46,8 +62,8 @@ public sealed class PlausibilityTests(PlausibilityFixture fixture) : IClassFixtu
     {
         foreach (var result in fixture.Results.Values)
         {
-            Assert.Equal(PlausibilityFixture.Rounds, result.Statistics.Total.Rounds);
-            Assert.True(result.Elapsed < TimeSpan.FromMinutes(1), $"took {result.Elapsed}");
+            var perMillion = result.Elapsed / (result.Statistics.Total.Rounds / 1_000_000.0);
+            Assert.True(perMillion < TimeSpan.FromMinutes(1), $"1 million rounds took {perMillion}");
         }
     }
 }

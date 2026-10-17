@@ -31,7 +31,7 @@ public sealed class GameSessionTests
             Bankroll: 1000   Your bet (10–500, Enter = 10, q = quit): 
             Dealer:  K♠ [??]
             You:     10♠ 9♠   (19)
-            (h)it, (s)tand, (q)uit after this round: Dealer:  K♠ 8♠   (18)
+            (h)it, (s)tand, (d)ouble, (q)uit after this round: Dealer:  K♠ 8♠   (18)
             Result:  You win  +25   Bankroll: 1025
 
             Bankroll: 1025   Your bet (10–500, Enter = 25, q = quit): 
@@ -41,6 +41,33 @@ public sealed class GameSessionTests
 
             """.ReplaceLineEndings("\n"),
             Output);
+    }
+
+    [Fact]
+    public async Task SplitAndDoubleRound()
+    {
+        // 8 8 split; hand 1 draws 3 → 11 and doubles (10 → 21); hand 2 draws 2 → 10 and stands; dealer 10 7.
+        var session = await RunAsync("8 10 8 7 3 10 2", "10", "p", "d", "s", "q");
+
+        Assert.Equal(
+            """
+            Dealer:  10♠ [??]
+            You:     8♠ 8♠   (16)
+            (h)it, (s)tand, (d)ouble, s(p)lit, (q)uit after this round: You split into Hand 1 and Hand 2.
+            Hand 1:  8♠ 3♠   (11)
+            Hand 1 – (h)it, (s)tand, (d)ouble, (q)uit after this round: Hand 1 doubled: bet 20, one more card.
+            Hand 1:  8♠ 3♠ 10♠   (21)
+            Hand 2:  8♠ 2♠   (10)
+            Hand 2 – (h)it, (s)tand, (d)ouble, (q)uit after this round: Dealer:  10♠ 7♠   (17)
+            Hand 1:  You win  +20
+            Hand 2:  You lose  -10
+            Result:  +10   Bankroll: 1010
+            """.ReplaceLineEndings("\n"),
+            string.Join("\n", Output.Split('\n').SkipWhile(l => !l.StartsWith("Dealer:", StringComparison.Ordinal)).Take(11)));
+        Assert.Equal(1, session.Statistics.Rounds);
+        Assert.Equal(1, session.Statistics.Wins);
+        Assert.Equal(1, session.Statistics.Losses);
+        Assert.Equal(1010m, session.Bankroll);
     }
 
     [Fact]

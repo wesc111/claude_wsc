@@ -32,8 +32,16 @@ public sealed class Hand
     /// <summary>True if at least one Ace currently counts as 11.</summary>
     public bool IsSoft { get; private set; }
 
-    /// <summary>True for exactly two cards: an Ace and a ten-valued card.</summary>
-    public bool IsBlackjack => _cards.Count == 2 && Total == 21;
+    /// <summary>True if the hand was created by splitting a pair. Such a hand is never a Blackjack.</summary>
+    public bool IsFromSplit { get; init; }
+
+    /// <summary>True for exactly two cards, an Ace and a ten-valued card, on a hand that is not from a split.</summary>
+    public bool IsBlackjack => !IsFromSplit && _cards.Count == 2 && Total == 21;
+
+    /// <summary>
+    /// True for exactly two cards of equal value (also e.g. K + 10). Whether a split is allowed is decided by the engine.
+    /// </summary>
+    public bool IsPair => _cards.Count == 2 && _cards[0].BaseValue == _cards[1].BaseValue;
 
     /// <summary>True if the total exceeds 21.</summary>
     public bool IsBust => Total > 21;

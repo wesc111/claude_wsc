@@ -12,8 +12,16 @@ namespace Blackjack.Core;
 /// </remarks>
 public sealed class BlackjackGame
 {
-    private static readonly IReadOnlySet<PlayerAction> HitOrStand =
-        new[] { PlayerAction.Hit, PlayerAction.Stand }.ToFrozenSet();
+    // One cached set per combination of Hit, Stand, Double and Split (bit 0 = Hit … bit 3 = Split).
+    private static readonly IReadOnlySet<PlayerAction>[] ActionSets =
+    [
+        .. Enumerable.Range(0, 16).Select(mask => (IReadOnlySet<PlayerAction>)new[]
+            {
+                PlayerAction.Hit, PlayerAction.Stand, PlayerAction.Double, PlayerAction.Split,
+            }
+            .Where((_, bit) => (mask & (1 << bit)) != 0)
+            .ToFrozenSet()),
+    ];
 
     private readonly Rules _rules;
     private readonly ICardSource _cards;
@@ -117,8 +125,8 @@ public sealed class BlackjackGame
         ValidateBet(bet);
         await NotifyAsync(static (o, n, c) => o.OnRoundStartedAsync(n, c), new RoundStartedNotification(bet, Bankroll), ct);
 
-        // A list of hands although M1 only ever uses one; splits (M4) will add more.
-        var hands = new List<Hand> { new() };
+        // Splits append new hands at the end, so the index of a hand never changes.
+        var hands = new List<PlayerHand> { new(new Hand(), bet) };
         var dealer = new Hand();
 
         await DealToPlayerAsync(hands, 0, ct);
@@ -128,13 +136,14 @@ public sealed class BlackjackGame
         dealer.Add(holeCard);
         await NotifyAsync(static (o, n, c) => o.OnCardDealtAsync(n, c), new CardDealtNotification(CardRecipient.Dealer, null, false), ct);
 
+        // Peek: a dealer Blackjack ends the round before any decision, so only the original bet is at stake.
         var peekable = upcard.IsAce || upcard.IsTenValued;
         if (peekable && dealer.IsBlackjack)
         {
             await RevealHoleCardAsync(holeCard, ct);
             await FinishHandsAsync(hands, ct);
         }
-        else if (hands[0].IsBlackjack)
+        else if (hands[0].Hand.IsBlackjack)
         {
             await FinishHandsAsync(hands, ct);
             await RevealHoleCardAsync(holeCard, ct);
@@ -148,7 +157,7 @@ public sealed class BlackjackGame
             }
 
             await RevealHoleCardAsync(holeCard, ct);
-            if (hands.Exists(h => !h.IsBust))
+            if (hands.Exists(h => !h.Hand.IsBust))
             {
                 while (_dealerStrategy.ShouldHit(dealer))
                 {
@@ -170,35 +179,98 @@ public sealed class BlackjackGame
         }
     }
 
-    private async Task PlayHandAsync(IPlayerStrategy player, List<Hand> hands, int index, Card upcard, CancellationToken ct)
+    private async Task PlayHandAsync(IPlayerStrategy player, List<PlayerHand> hands, int index, Card upcard, CancellationToken ct)
     {
-        var hand = hands[index];
-        while (!hand.IsBust && hand.Total < 21)
+        // A hand created by a split receives its second card when its turn starts.
+        if (hands[index].Hand.Cards.Count == 1)
         {
-            var context = new DecisionContext(hand.Cards.ToArray(), hand.Total, hand.IsSoft, upcard, HitOrStand);
-            var action = await player.DecideAsync(context, ct);
-            ct.ThrowIfCancellationRequested();
-            if (!context.AllowedActions.Contains(action))
-            {
-                throw new InvalidOperationException($"The strategy returned the action '{action}', which is not allowed.");
-            }
+            await DealToPlayerAsync(hands, index, ct);
+        }
 
-            if (action == PlayerAction.Stand)
+        while (!hands[index].Hand.IsBust && hands[index].Hand.Total < 21)
+        {
+            var current = hands[index];
+            var allowed = AllowedActions(hands, index);
+
+            // Split Aces without a possible re-split: the turn ends after their one card.
+            if (!allowed.Contains(PlayerAction.Hit) && !allowed.Contains(PlayerAction.Split))
             {
                 return;
             }
 
-            await DealToPlayerAsync(hands, index, ct);
+            var hand = current.Hand;
+            var context = new DecisionContext(hand.Cards.ToArray(), hand.Total, hand.IsSoft, upcard, allowed, index, hands.Count);
+            var action = await player.DecideAsync(context, ct);
+            ct.ThrowIfCancellationRequested();
+            if (!allowed.Contains(action))
+            {
+                throw new InvalidOperationException($"The strategy returned the action '{action}', which is not allowed.");
+            }
+
+            switch (action)
+            {
+                case PlayerAction.Stand:
+                    return;
+                case PlayerAction.Hit:
+                    await DealToPlayerAsync(hands, index, ct);
+                    break;
+                case PlayerAction.Double:
+                    current.Bet *= 2;
+                    current.IsDoubled = true;
+                    await NotifyAsync(static (o, n, c) => o.OnHandDoubledAsync(n, c), new HandDoubledNotification(index, current.Bet), ct);
+                    await DealToPlayerAsync(hands, index, ct);
+                    return;
+                case PlayerAction.Split:
+                    await SplitAsync(hands, index, ct);
+                    break;
+            }
         }
     }
 
-    private async Task<RoundResult> SettleAsync(List<Hand> hands, decimal bet, Hand dealer, CancellationToken ct)
+    private async Task SplitAsync(List<PlayerHand> hands, int index, CancellationToken ct)
+    {
+        var current = hands[index];
+        var first = current.Hand.Cards[0];
+        var moved = current.Hand.Cards[1];
+        var aces = first.IsAce;
+
+        hands[index] = new PlayerHand(new Hand([first]) { IsFromSplit = true }, current.Bet) { IsSplitAces = aces };
+        hands.Add(new PlayerHand(new Hand([moved]) { IsFromSplit = true }, current.Bet) { IsSplitAces = aces });
+        await NotifyAsync(static (o, n, c) => o.OnHandSplitAsync(n, c), new HandSplitNotification(index, hands.Count - 1, moved), ct);
+        await DealToPlayerAsync(hands, index, ct);
+    }
+
+    private IReadOnlySet<PlayerAction> AllowedActions(List<PlayerHand> hands, int index)
+    {
+        var current = hands[index];
+        var hand = current.Hand;
+        var committed = 0m;
+        foreach (var h in hands)
+        {
+            committed += h.Bet;
+        }
+
+        // Double and Split both add the hand's bet once more.
+        var covered = Bankroll is not { } available || committed + current.Bet <= available;
+        var twoCards = hand.Cards.Count == 2;
+
+        var canHit = !current.IsSplitAces;
+        var canDouble = twoCards && covered && !current.IsSplitAces && (!hand.IsFromSplit || _rules.DoubleAfterSplit);
+        var canSplit = twoCards && covered && hand.IsPair && hands.Count < _rules.MaxSplitHands
+                       && (!current.IsSplitAces || _rules.ResplitAces);
+
+        var mask = (canHit ? 1 : 0) | 2 | (canDouble ? 4 : 0) | (canSplit ? 8 : 0);
+        return ActionSets[mask];
+    }
+
+    private async Task<RoundResult> SettleAsync(List<PlayerHand> hands, decimal initialBet, Hand dealer, CancellationToken ct)
     {
         var results = new List<HandResult>(hands.Count);
         var net = 0m;
+        var totalBet = 0m;
         for (var i = 0; i < hands.Count; i++)
         {
-            var hand = hands[i];
+            var (hand, bet) = (hands[i].Hand, hands[i].Bet);
             var outcome = Settle(hand, dealer);
             var handNet = outcome switch
             {
@@ -208,18 +280,21 @@ public sealed class BlackjackGame
                 _ => -bet,
             };
             net += handNet;
-            results.Add(new HandResult(hand.Cards.ToList().AsReadOnly(), hand.Total, hand.IsSoft, bet, outcome, handNet));
+            totalBet += bet;
+            results.Add(new HandResult(
+                hand.Cards.ToList().AsReadOnly(), hand.Total, hand.IsSoft, bet, outcome, handNet, hands[i].IsDoubled, hand.IsFromSplit));
             await NotifyAsync(static (o, n, c) => o.OnHandSettledAsync(n, c), new HandSettledNotification(i, outcome, handNet), ct);
         }
 
         Bankroll += net;
         var result = new RoundResult(
-            bet * hands.Count,
+            totalBet,
             results.AsReadOnly(),
             dealer.Cards.ToList().AsReadOnly(),
             dealer.Total,
             net,
-            Bankroll);
+            Bankroll,
+            initialBet);
         await NotifyAsync(static (o, r, c) => o.OnRoundCompletedAsync(r, c), result, ct);
         return result;
     }
@@ -254,10 +329,10 @@ public sealed class BlackjackGame
         };
     }
 
-    private async Task DealToPlayerAsync(List<Hand> hands, int index, CancellationToken ct)
+    private async Task DealToPlayerAsync(List<PlayerHand> hands, int index, CancellationToken ct)
     {
         var card = _cards.Draw();
-        hands[index].Add(card);
+        hands[index].Hand.Add(card);
         await NotifyAsync(static (o, n, c) => o.OnCardDealtAsync(n, c), new CardDealtNotification(CardRecipient.Player(index), card, true), ct);
     }
 
@@ -272,7 +347,7 @@ public sealed class BlackjackGame
     private Task RevealHoleCardAsync(Card holeCard, CancellationToken ct) =>
         NotifyAsync(static (o, n, c) => o.OnHoleCardRevealedAsync(n, c), new HoleCardRevealedNotification(holeCard), ct);
 
-    private async Task FinishHandsAsync(List<Hand> hands, CancellationToken ct)
+    private async Task FinishHandsAsync(List<PlayerHand> hands, CancellationToken ct)
     {
         for (var i = 0; i < hands.Count; i++)
         {
@@ -280,9 +355,9 @@ public sealed class BlackjackGame
         }
     }
 
-    private Task FinishHandAsync(List<Hand> hands, int index, CancellationToken ct)
+    private Task FinishHandAsync(List<PlayerHand> hands, int index, CancellationToken ct)
     {
-        var hand = hands[index];
+        var hand = hands[index].Hand;
         var notification = new PlayerHandFinishedNotification(index, hand.Total, hand.IsSoft, hand.IsBlackjack, hand.IsBust);
         return NotifyAsync(static (o, n, c) => o.OnPlayerHandFinishedAsync(n, c), notification, ct);
     }

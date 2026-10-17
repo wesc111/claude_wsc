@@ -15,7 +15,10 @@ internal sealed class StatisticsBucket
     /// <summary>Number of player hands (equal to <see cref="Rounds"/> until splits exist).</summary>
     public long Hands { get; private set; }
 
-    /// <summary>Sum of all bets.</summary>
+    /// <summary>Sum of the initial bets (before Double and Split); the base of the house edge.</summary>
+    public decimal InitialBets { get; private set; }
+
+    /// <summary>Sum of all bets, including the additional bets of Double and Split.</summary>
     public decimal Wagered { get; private set; }
 
     /// <summary>Sum of all net results.</summary>
@@ -42,10 +45,16 @@ internal sealed class StatisticsBucket
     /// <summary>Number of rounds in which the dealer busted.</summary>
     public long DealerBusts { get; private set; }
 
-    /// <summary>House edge in %: −net / wagered. <c>NaN</c> without rounds.</summary>
-    public double HouseEdgePercent => Wagered == 0 ? double.NaN : (double)(-Net / Wagered) * 100;
+    /// <summary>Number of rounds with at least one doubled hand.</summary>
+    public long DoubleRounds { get; private set; }
 
-    /// <summary>Standard error of the per-round result, in % of the bet. <c>NaN</c> with fewer than 2 rounds.</summary>
+    /// <summary>Number of rounds with at least one split.</summary>
+    public long SplitRounds { get; private set; }
+
+    /// <summary>House edge in %: −net / initial bets (SPEC 7.7). <c>NaN</c> without rounds.</summary>
+    public double HouseEdgePercent => InitialBets == 0 ? double.NaN : (double)(-Net / InitialBets) * 100;
+
+    /// <summary>Standard error of the per-round result, in % of the initial bet. <c>NaN</c> with fewer than 2 rounds.</summary>
     public double StandardErrorPercent
     {
         get
@@ -85,20 +94,34 @@ internal sealed class StatisticsBucket
     /// <summary>Dealer busts in % of the rounds in which the dealer played out the hand.</summary>
     public double DealerBustPercent => Percent(DealerBusts, DealerPlayed);
 
+    /// <summary>Rounds with a doubled hand in % of rounds.</summary>
+    public double DoublePercent => Percent(DoubleRounds, Rounds);
+
+    /// <summary>Rounds with a split in % of rounds.</summary>
+    public double SplitPercent => Percent(SplitRounds, Rounds);
+
     /// <summary>Adds one classified round.</summary>
     public void Add(RoundResult result, in RoundFacts facts)
     {
         Rounds++;
+        InitialBets += result.InitialBet;
         Wagered += result.TotalBet;
         Net += result.Net;
 
-        var perRound = (double)(result.Net / result.TotalBet);
+        var perRound = (double)(result.Net / result.InitialBet);
         _sumResult += perRound;
         _sumResultSquared += perRound * perRound;
 
+        if (result.PlayerHands.Count > 1)
+        {
+            SplitRounds++;
+        }
+
+        var doubled = false;
         foreach (var hand in result.PlayerHands)
         {
             Hands++;
+            doubled |= hand.IsDoubled;
             if (hand.Outcome.IsWin())
             {
                 Wins++;
@@ -116,6 +139,11 @@ internal sealed class StatisticsBucket
             {
                 PlayerBusts++;
             }
+        }
+
+        if (doubled)
+        {
+            DoubleRounds++;
         }
 
         if (facts.PlayerBlackjack)
@@ -139,6 +167,7 @@ internal sealed class StatisticsBucket
         ArgumentNullException.ThrowIfNull(other);
         Rounds += other.Rounds;
         Hands += other.Hands;
+        InitialBets += other.InitialBets;
         Wagered += other.Wagered;
         Net += other.Net;
         Wins += other.Wins;
@@ -148,6 +177,8 @@ internal sealed class StatisticsBucket
         PlayerBusts += other.PlayerBusts;
         DealerPlayed += other.DealerPlayed;
         DealerBusts += other.DealerBusts;
+        DoubleRounds += other.DoubleRounds;
+        SplitRounds += other.SplitRounds;
         _sumResult += other._sumResult;
         _sumResultSquared += other._sumResultSquared;
     }

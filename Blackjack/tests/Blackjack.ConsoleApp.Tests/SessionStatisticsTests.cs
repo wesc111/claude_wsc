@@ -25,5 +25,5 @@ public sealed class SessionStatisticsTests
     }
 
     private static RoundResult Result(HandOutcome outcome, decimal net) =>
-        new(10m, [new HandResult([], 0, false, 10m, outcome, net)], [], 0, net, 1000m + net);
+        new(10m, [new HandResult([], 0, false, 10m, outcome, net)], [], 0, net, 1000m + net, 10m);
 }

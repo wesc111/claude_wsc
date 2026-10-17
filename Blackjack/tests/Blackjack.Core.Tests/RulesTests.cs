@@ -15,6 +15,9 @@ public sealed class RulesTests
         Assert.True(rules.DealerPeeks);
         Assert.Equal(10m, rules.MinBet);
         Assert.Equal(500m, rules.MaxBet);
+        Assert.True(rules.DoubleAfterSplit);
+        Assert.Equal(4, rules.MaxSplitHands);
+        Assert.False(rules.ResplitAces);
         Assert.Equal(new Rules(), rules);
     }
 
@@ -66,4 +69,16 @@ public sealed class RulesTests
         Assert.Equal(1000m, rules.MinBet);
         Assert.Equal(5000m, rules.MaxBet);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(5)]
+    public void MaxSplitHandsOutOfRange(int hands) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Rules { MaxSplitHands = hands });
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(4)]
+    public void MaxSplitHandsAtLimits(int hands) =>
+        Assert.Equal(hands, new Rules { MaxSplitHands = hands }.MaxSplitHands);
 }

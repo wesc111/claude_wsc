@@ -6,6 +6,8 @@ internal abstract class FlatBetPlayer : IPlayerStrategy
     // Cached tasks: a simulation makes millions of decisions and should not allocate a task for each.
     private static readonly Task<PlayerAction> HitTask = Task.FromResult(PlayerAction.Hit);
     private static readonly Task<PlayerAction> StandTask = Task.FromResult(PlayerAction.Stand);
+    private static readonly Task<PlayerAction> DoubleTask = Task.FromResult(PlayerAction.Double);
+    private static readonly Task<PlayerAction> SplitTask = Task.FromResult(PlayerAction.Split);
 
     private readonly Task<decimal?> _betTask;
 
@@ -29,6 +31,8 @@ internal abstract class FlatBetPlayer : IPlayerStrategy
         {
             PlayerAction.Hit => HitTask,
             PlayerAction.Stand => StandTask,
+            PlayerAction.Double => DoubleTask,
+            PlayerAction.Split => SplitTask,
             var other => Task.FromResult(other),
         };
 
