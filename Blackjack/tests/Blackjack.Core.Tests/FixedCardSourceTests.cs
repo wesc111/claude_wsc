@@ -12,6 +12,7 @@ public sealed class FixedCardSourceTests
 
         Assert.Equal(Cards.Parse("A K 5"), [source.Draw(), source.Draw(), source.Draw()]);
         Assert.Equal(0, source.CardsRemaining);
+        Assert.Equal(3, source.TotalCards);
         var error = Assert.Throws<InvalidOperationException>(() => source.Draw());
         Assert.Contains("Unexpected draw", error.Message, StringComparison.Ordinal);
     }

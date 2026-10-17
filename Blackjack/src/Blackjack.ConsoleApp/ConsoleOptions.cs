@@ -11,6 +11,7 @@ internal sealed record ConsoleOptions
           --bankroll <amount>   Starting bankroll (default 1000)
           --min-bet <amount>    Minimum bet (default 10)
           --max-bet <amount>    Maximum bet (default 500)
+          --decks <1-8>         Number of decks in the shoe (default 6)
           --seed <number>       Seed for a reproducible shoe (default: random)
           --help                Show this help
         """;
@@ -23,6 +24,9 @@ internal sealed record ConsoleOptions
 
     /// <summary>Maximum bet.</summary>
     public decimal MaxBet { get; init; } = 500m;
+
+    /// <summary>Number of decks in the shoe.</summary>
+    public int Decks { get; init; } = Rules.Default.Decks;
 
     /// <summary>Seed for the shoe, or <c>null</c> for a random one.</summary>
     public int? Seed { get; init; }
@@ -46,7 +50,7 @@ internal sealed record ConsoleOptions
                 continue;
             }
 
-            if (name is not ("--bankroll" or "--min-bet" or "--max-bet" or "--seed"))
+            if (name is not ("--bankroll" or "--min-bet" or "--max-bet" or "--seed" or "--decks"))
             {
                 error = $"Unknown argument '{args[i]}'.";
                 return false;
@@ -61,6 +65,19 @@ internal sealed record ConsoleOptions
                 }
 
                 value = args[++i];
+            }
+
+            if (name == "--decks")
+            {
+                if (!int.TryParse(value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var decks)
+                    || decks is < Rules.MinDecks or > Rules.MaxDecks)
+                {
+                    error = $"Invalid value for --decks: '{value}' ({Rules.MinDecks}–{Rules.MaxDecks} required).";
+                    return false;
+                }
+
+                options = options with { Decks = decks };
+                continue;
             }
 
             if (name == "--seed")
@@ -103,6 +120,9 @@ internal sealed record ConsoleOptions
 
         return true;
     }
+
+    /// <summary>The table rules for these options.</summary>
+    public Rules CreateRules() => new() { Decks = Decks, MinBet = MinBet, MaxBet = MaxBet };
 
     private static (string Name, string? Value) Split(string arg)
     {

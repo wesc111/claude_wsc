@@ -274,4 +274,102 @@ public sealed class TableViewModelTests
         Assert.False(vm.DoubleCommand.CanExecute(null));
         Assert.False(vm.SplitCommand.CanExecute(null));
     }
+
+    [Fact]
+    public void ShoeCountsDownWithEveryCard()
+    {
+        var t = Table.Start("10 9 2 8 5");
+        var vm = t.ViewModel;
+
+        Assert.Equal("Shoe: 5 / 5", vm.ShoeText);
+
+        t.Execute(vm.DealCommand);
+        Assert.Equal(1, vm.ShoeRemaining);
+        Assert.Equal(5, vm.ShoeTotal);
+
+        t.Execute(vm.HitCommand);
+        Assert.Equal("Shoe: 0 / 5", vm.ShoeText);
+    }
+
+    [Fact]
+    public void ShoeIsFullAfterAReshuffle()
+    {
+        // A real one-deck shoe that needs a reshuffle right away (penetration reached by 52 draws).
+        var shoe = new Shoe(1, 1m, seed: 3);
+        for (var i = 0; i < 52; i++)
+        {
+            shoe.Draw();
+        }
+
+        var t = new Table(_ => shoe);
+        t.Do(t.ViewModel.Start);
+
+        Assert.Equal("Shoe: 52 / 52", t.ViewModel.ShoeText);
+        Assert.StartsWith("The shoe has been shuffled.", t.ViewModel.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReshuffleMarkerSitsAtTheCardsLeftWhenReshuffling() =>
+        Assert.Equal(TableViewModel.ShoeBarWidth * 0.25, Table.Start("10 9 7 8").ViewModel.ReshuffleMarkerLeft);
+
+    [Fact]
+    public void DecksDefaultToSixAndCanBeChosenBeforeTheFirstRound()
+    {
+        var t = new Table(1000m, "10 9 7 8", "A K Q J 10");
+        var vm = t.ViewModel;
+        t.Do(vm.Start);
+
+        Assert.Equal(6, vm.Decks);
+        Assert.Equal([1, 2, 3, 4, 5, 6, 7, 8], vm.DeckOptions);
+        Assert.True(vm.CanChangeDecks);
+
+        t.Do(() => vm.Decks = 2);
+
+        Assert.Equal(2, vm.Decks);
+        Assert.Equal([6, 2], t.UsedRules.Select(r => r.Decks));
+        Assert.Equal("Shoe: 5 / 5", vm.ShoeText);
+        Assert.Equal(TablePhase.Betting, vm.Phase);
+        Assert.NotEqual(TablePhase.Left, vm.Phase);
+        Assert.Equal(1000m, vm.Bankroll);
+    }
+
+    [Fact]
+    public void DecksAreLockedOnceAGameHasRounds()
+    {
+        var t = new Table(1000m, "10 9 9 8 10 9 9 8");
+        var vm = t.ViewModel;
+        t.Do(vm.Start);
+        t.Execute(vm.DealCommand);
+
+        Assert.False(vm.CanChangeDecks, "locked during the round");
+        t.Do(() => vm.Decks = 1);
+        Assert.Equal(6, vm.Decks);
+
+        t.Execute(vm.StandCommand);
+
+        Assert.Equal(TablePhase.Betting, vm.Phase);
+        Assert.False(vm.CanChangeDecks, "locked after the first round");
+        Assert.Single(t.UsedRules);
+    }
+
+    [Fact]
+    public void DecksChosenAfterLeavingApplyToNewGame()
+    {
+        var t = new Table(1000m, "10 9 9 8", "A K Q J");
+        var vm = t.ViewModel;
+        t.Do(vm.Start);
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+        t.Execute(vm.LeaveTableCommand);
+
+        Assert.True(vm.CanChangeDecks);
+        t.Do(() => vm.Decks = 1);
+        Assert.Single(t.UsedRules);
+
+        t.Execute(vm.NewGameCommand);
+
+        Assert.Equal([6, 1], t.UsedRules.Select(r => r.Decks));
+        Assert.True(vm.CanChangeDecks);
+        Assert.Equal("Shoe: 4 / 4", vm.ShoeText);
+    }
 }

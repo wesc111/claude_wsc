@@ -49,7 +49,7 @@ public sealed class Shoe : ICardSource
     {
     }
 
-    /// <summary>The total number of cards in the shoe.</summary>
+    /// <inheritdoc />
     public int TotalCards => _cards.Length;
 
     /// <inheritdoc />

@@ -15,4 +15,7 @@ public interface ICardSource
 
     /// <summary>The number of cards that can still be drawn.</summary>
     int CardsRemaining { get; }
+
+    /// <summary>The number of all cards in the source, dealt or not.</summary>
+    int TotalCards { get; }
 }

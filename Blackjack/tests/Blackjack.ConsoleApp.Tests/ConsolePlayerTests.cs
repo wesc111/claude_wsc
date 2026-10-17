@@ -193,4 +193,24 @@ public sealed class ConsolePlayerTests
         Assert.StartsWith("(s)tand, s(p)lit, (q)uit after this round: ", _output.ToString(), StringComparison.Ordinal);
         Assert.Equal(1, Count("Hit is not possible now. Please enter s, p or q."));
     }
+
+    [Fact]
+    public async Task ShoeIsShownBeforeTheBetPrompt()
+    {
+        var shoe = new FixedCardSource("A K 5");
+        shoe.Draw();
+        var player = new ConsolePlayer(new StringReader("25\n"), _output, shoe);
+
+        await player.GetBetAsync(Bet(), Ct);
+
+        Assert.StartsWith("Shoe: 2 of 3 cards left.\nBankroll: 1000   Your bet", _output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NoShoeLineWithoutShoe()
+    {
+        await Player("25").GetBetAsync(Bet(), Ct);
+
+        Assert.DoesNotContain("Shoe:", _output.ToString(), StringComparison.Ordinal);
+    }
 }

@@ -13,13 +13,18 @@ namespace Blackjack.Gui.ViewModels;
 public sealed class TableViewModel : ObservableObject, IGameObserver
 {
     private readonly Rules _rules;
-    private readonly Func<ICardSource> _cardSourceFactory;
+    private readonly Func<Rules, ICardSource> _cardSourceFactory;
     private readonly decimal _startingBankroll;
     private readonly TimeSpan _dealDelay;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly IRelayCommand[] _commands;
 
     private BlackjackGame _game;
+    private ICardSource _cardSource = null!;
+    private int _decks;
+    private bool _restartRequested;
+    private int _shoeRemaining;
+    private int _shoeTotal;
     private SessionStatistics _statistics = new();
     private TaskCompletionSource? _newGame;
     private TablePhase _phase = TablePhase.Dealing;
@@ -33,10 +38,10 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
     /// <summary>Creates the table; call <see cref="Start"/> to begin playing.</summary>
     /// <param name="rules">The table rules.</param>
-    /// <param name="cardSourceFactory">Creates the shoe for each new game.</param>
+    /// <param name="cardSourceFactory">Creates the shoe for each new game from the rules (with the selected number of decks).</param>
     /// <param name="startingBankroll">The bankroll of each new game.</param>
     /// <param name="dealDelay">Pause after each card for the deal animation; <see cref="TimeSpan.Zero"/> in tests.</param>
-    public TableViewModel(Rules rules, Func<ICardSource> cardSourceFactory, decimal startingBankroll, TimeSpan dealDelay)
+    public TableViewModel(Rules rules, Func<Rules, ICardSource> cardSourceFactory, decimal startingBankroll, TimeSpan dealDelay)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(cardSourceFactory);
@@ -44,6 +49,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         _cardSourceFactory = cardSourceFactory;
         _startingBankroll = startingBankroll;
         _dealDelay = dealDelay;
+        _decks = rules.Decks;
         _game = NewGame();
         _bankroll = startingBankroll;
 
@@ -83,6 +89,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             if (SetProperty(ref _phase, value))
             {
                 OnPropertyChanged(nameof(IsSessionOver));
+                OnPropertyChanged(nameof(CanChangeDecks));
                 RefreshCommands();
             }
         }
@@ -138,6 +145,73 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         private set => SetProperty(ref _lastResult, value);
     }
 
+    /// <summary>Width of the shoe progress bar in the view; the reshuffle marker is placed relative to it.</summary>
+    public const double ShoeBarWidth = 200;
+
+    /// <summary>The selectable numbers of decks.</summary>
+    public IReadOnlyList<int> DeckOptions { get; } = [.. Enumerable.Range(Rules.MinDecks, Rules.MaxDecks - Rules.MinDecks + 1)];
+
+    /// <summary>
+    /// The number of decks. Can be changed only before the first round of a game (a fresh shoe is created at once)
+    /// or after the session ended (applies to New game).
+    /// </summary>
+    public int Decks
+    {
+        get => _decks;
+        set
+        {
+            if (value == _decks || !CanChangeDecks || value < Rules.MinDecks || value > Rules.MaxDecks)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _decks = value;
+            OnPropertyChanged();
+            if (Phase == TablePhase.Betting)
+            {
+                // The loop is waiting for the first bet: end that request and start again with a new shoe.
+                _restartRequested = true;
+                Player.LeaveTable();
+            }
+        }
+    }
+
+    /// <summary>Whether <see cref="Decks"/> can be changed now.</summary>
+    public bool CanChangeDecks => IsSessionOver || (Phase == TablePhase.Betting && _statistics.Rounds == 0);
+
+    /// <summary>Cards left in the shoe.</summary>
+    public int ShoeRemaining
+    {
+        get => _shoeRemaining;
+        private set
+        {
+            if (SetProperty(ref _shoeRemaining, value))
+            {
+                OnPropertyChanged(nameof(ShoeText));
+            }
+        }
+    }
+
+    /// <summary>All cards of the shoe.</summary>
+    public int ShoeTotal
+    {
+        get => _shoeTotal;
+        private set
+        {
+            if (SetProperty(ref _shoeTotal, value))
+            {
+                OnPropertyChanged(nameof(ShoeText));
+            }
+        }
+    }
+
+    /// <summary>The shoe as text, e.g. <c>Shoe: 247 / 312</c>.</summary>
+    public string ShoeText => $"Shoe: {ShoeRemaining} / {ShoeTotal}";
+
+    /// <summary>Position of the reshuffle marker on the shoe bar: where the cards left reach 1 − penetration.</summary>
+    public double ReshuffleMarkerLeft => ShoeBarWidth * (double)(1 - _rules.Penetration);
+
     /// <summary>Adds a chip (parameter: its value as text).</summary>
     public IRelayCommand<string> AddChipCommand { get; }
 
@@ -178,6 +252,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public ValueTask OnShoeShuffledAsync(CancellationToken ct)
     {
         _shuffled = true;
+        UpdateShoe();
         return ValueTask.CompletedTask;
     }
 
@@ -199,6 +274,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         var hand = notification.Recipient.IsDealer ? Dealer : PlayerHands[notification.Recipient.HandIndex];
         hand.Cards.Add(new CardViewModel(notification.Card));
         hand.UpdateTotal();
+        UpdateShoe();
         await PauseAsync(ct);
     }
 
@@ -283,6 +359,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
                 _newGame = null;
                 _game = NewGame();
                 _statistics = new SessionStatistics();
+                OnPropertyChanged(nameof(CanChangeDecks));
                 _lastBet = null;
                 Bankroll = _startingBankroll;
                 Dealer.Cards.Clear();
@@ -314,6 +391,14 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             }
 
             var result = await _game.PlayRoundAsync(Player, ct);
+            if (result is null && _restartRequested)
+            {
+                // The number of decks was changed before the first round.
+                _restartRequested = false;
+                _game = NewGame();
+                continue;
+            }
+
             if (result is null)
             {
                 Phase = TablePhase.Left;
@@ -322,6 +407,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             }
 
             _statistics.Record(result);
+            OnPropertyChanged(nameof(CanChangeDecks));
         }
     }
 
@@ -329,7 +415,19 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         $"Rounds: {_statistics.Rounds}, wins: {_statistics.Wins}, losses: {_statistics.Losses}, " +
         $"pushes: {_statistics.Pushes}, net: {DisplayText.SignedMoney(_statistics.Net)}.";
 
-    private BlackjackGame NewGame() => new(_rules, _cardSourceFactory(), _startingBankroll, [this]);
+    private BlackjackGame NewGame()
+    {
+        var rules = _rules with { Decks = _decks };
+        _cardSource = _cardSourceFactory(rules);
+        UpdateShoe();
+        return new BlackjackGame(rules, _cardSource, _startingBankroll, [this]);
+    }
+
+    private void UpdateShoe()
+    {
+        ShoeTotal = _cardSource.TotalCards;
+        ShoeRemaining = _cardSource.CardsRemaining;
+    }
 
     private void OnBetRequested(object? sender, BetContext context)
     {

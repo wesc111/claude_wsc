@@ -22,6 +22,8 @@ public sealed class ShoeTests
         var cards = DrawAll(shoe);
 
         Assert.Equal(312, cards.Count);
+        Assert.Equal(312, shoe.TotalCards);
+        Assert.Equal(0, shoe.CardsRemaining);
         var groups = cards.GroupBy(c => c).ToList();
         Assert.Equal(52, groups.Count);
         Assert.All(groups, g => Assert.Equal(6, g.Count()));

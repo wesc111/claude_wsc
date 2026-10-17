@@ -16,9 +16,17 @@ public sealed class Table
         ViewModel = new TableViewModel(Rules.Default, NextSource, bankroll, TimeSpan.Zero);
     }
 
+    public Table(Func<Rules, ICardSource> factory)
+    {
+        _sources = new Queue<FixedCardSource>();
+        ViewModel = new TableViewModel(Rules.Default, factory, 1000m, TimeSpan.Zero);
+    }
+
     public TableViewModel ViewModel { get; }
 
     public FixedCardSource? LastSource { get; private set; }
+
+    public List<Rules> UsedRules { get; } = [];
 
     public static Table Start(string cards, decimal bankroll = 1000m)
     {
@@ -53,8 +61,9 @@ public sealed class Table
         Do(() => ViewModel.AddChipCommand.Execute(value));
     }
 
-    private FixedCardSource NextSource()
+    private FixedCardSource NextSource(Rules rules)
     {
+        UsedRules.Add(rules);
         LastSource = _sources.Count > 0 ? _sources.Dequeue() : new FixedCardSource("");
         return LastSource;
     }

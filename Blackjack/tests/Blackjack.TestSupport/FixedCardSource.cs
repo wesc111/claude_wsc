@@ -29,6 +29,8 @@ public sealed class FixedCardSource : ICardSource
 
     public int CardsRemaining => _cards.Count - _next;
 
+    public int TotalCards => _cards.Count;
+
     public Card Draw()
     {
         if (_next >= _cards.Count)

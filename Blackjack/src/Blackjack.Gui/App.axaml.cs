@@ -21,7 +21,7 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var rules = Rules.Default;
-            var table = new TableViewModel(rules, () => new Shoe(rules), startingBankroll: 1000m, DealDelay);
+            var table = new TableViewModel(rules, r => new Shoe(r), startingBankroll: 1000m, DealDelay);
             var window = new MainWindow { DataContext = table };
             window.Closing += (_, _) => table.Shutdown();
             desktop.MainWindow = window;

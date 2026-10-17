@@ -162,7 +162,7 @@ Blackjack.slnx
 | `Suit` | enum | Clubs, Diamonds, Hearts, Spades |
 | `Rank` | enum | Two … Ten, Jack, Queen, King, Ace |
 | `Card` | readonly record struct | Suit, Rank, `IsTenValued`, base value |
-| `ICardSource` | interface | `Card Draw()`, `bool NeedsReshuffle`, `void Shuffle()`, `int CardsRemaining` |
+| `ICardSource` | interface | `Card Draw()`, `bool NeedsReshuffle`, `void Shuffle()`, `int CardsRemaining`, `int TotalCards` (since E1) |
 | `Shoe` | class | Implements `ICardSource`; n decks, Fisher–Yates shuffle, penetration, seedable `Random` (see 2.6) |
 | `Hand` | class | Cards, `Total`, `IsSoft`, `IsBlackjack`, `IsBust`; from M4 `IsPair`, `IsFromSplit` (see 7.4) |
 | `Rules` | record | Table rules and bet limits (see 2.1) |
@@ -582,6 +582,16 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Must run on macOS (Apple Silicon); Windows and Linux desirable.
 
 ---
+
+## 8a. Extensions after M5
+
+### E1 – Shoe display and number of decks
+
+- `ICardSource` gets `int TotalCards` (all cards of the source, dealt or not). `Shoe` already has it; `FixedCardSource` returns the length of its list. The display shows only the number of cards left in the shoe, never their values.
+- Console app: new argument `--decks <1-8>` (default 6). Before each bet prompt (after a possible reshuffle) a line `Shoe: 247 of 312 cards left.` is shown.
+- GUI:
+  - Header shows `Shoe: 247 / 312` and a progress bar of the cards left, with a marker where the shoe will be reshuffled (at `Penetration`, i.e. 25 % left with the default 75 %). Updated after each dealt card and after a reshuffle.
+  - Deck selector `Decks` 1–8 (default 6). Enabled only before the first round of a game (at start and after Game over / Leave table); a change before the first round creates a fresh shoe immediately, a change after the session ended applies to New game. Disabled while a game has rounds.
 
 ## 9. Non-goals (not part of any current milestone)
 

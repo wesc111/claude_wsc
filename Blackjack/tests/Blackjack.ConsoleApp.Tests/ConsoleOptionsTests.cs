@@ -12,6 +12,7 @@ public sealed class ConsoleOptionsTests
         Assert.Equal(10m, options.MinBet);
         Assert.Equal(500m, options.MaxBet);
         Assert.Null(options.Seed);
+        Assert.Equal(6, options.Decks);
         Assert.False(options.ShowHelp);
     }
 
@@ -19,12 +20,14 @@ public sealed class ConsoleOptionsTests
     public void AllArguments()
     {
         Assert.True(ConsoleOptions.TryParse(
-            ["--bankroll", "250", "--min-bet=5", "--max-bet", "100,5", "--seed", "42"], out var options, out _));
+            ["--bankroll", "250", "--min-bet=5", "--max-bet", "100,5", "--seed", "42", "--decks", "2"], out var options, out _));
 
         Assert.Equal(250m, options.Bankroll);
         Assert.Equal(5m, options.MinBet);
         Assert.Equal(100.5m, options.MaxBet);
         Assert.Equal(42, options.Seed);
+        Assert.Equal(2, options.Decks);
+        Assert.Equal(new Rules { Decks = 2, MinBet = 5m, MaxBet = 100.5m }, options.CreateRules());
     }
 
     [Fact]
@@ -43,6 +46,10 @@ public sealed class ConsoleOptionsTests
     [InlineData("--seed", "1.5")]
     [InlineData("--max-bet", "5")]
     [InlineData("--bankroll", "5")]
+    [InlineData("--decks", "0")]
+    [InlineData("--decks", "9")]
+    [InlineData("--decks", "two")]
+    [InlineData("--decks", "-1")]
     public void InvalidArguments(params string[] args)
     {
         Assert.False(ConsoleOptions.TryParse(args, out _, out var error));

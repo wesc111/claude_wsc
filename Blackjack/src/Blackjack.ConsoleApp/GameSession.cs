@@ -14,10 +14,10 @@ internal sealed class GameSession
     {
         _options = options;
         _output = output;
-        _rules = new Rules { MinBet = options.MinBet, MaxBet = options.MaxBet };
+        _rules = options.CreateRules();
         var renderer = new TableRenderer(output, new CardFormatter(useColor));
         _game = new BlackjackGame(_rules, cards, options.Bankroll, [renderer]);
-        _player = new ConsolePlayer(input, output);
+        _player = new ConsolePlayer(input, output, cards);
     }
 
     /// <summary>The statistics of the completed rounds.</summary>

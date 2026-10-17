@@ -1,7 +1,10 @@
 namespace Blackjack.ConsoleApp;
 
 /// <summary>A human player who enters bets and actions on the console.</summary>
-internal sealed class ConsolePlayer(TextReader input, TextWriter output) : IPlayerStrategy
+/// <param name="input">Where bets and actions are read from.</param>
+/// <param name="output">Where prompts are written to.</param>
+/// <param name="shoe">If given, the cards left in it are shown before each bet prompt.</param>
+internal sealed class ConsolePlayer(TextReader input, TextWriter output, ICardSource? shoe = null) : IPlayerStrategy
 {
     private decimal? _lastBet;
 
@@ -20,6 +23,12 @@ internal sealed class ConsolePlayer(TextReader input, TextWriter output) : IPlay
         var max = context.MaxAllowedBet;
         var defaultBet = Math.Clamp(_lastBet ?? min, min, max);
         var bankroll = context.Bankroll is { } b ? Money.Format(b) : "unlimited";
+
+        // Shown here because the engine reshuffles before asking for the bet.
+        if (shoe is not null)
+        {
+            output.WriteLine($"Shoe: {shoe.CardsRemaining} of {shoe.TotalCards} cards left.");
+        }
 
         while (true)
         {

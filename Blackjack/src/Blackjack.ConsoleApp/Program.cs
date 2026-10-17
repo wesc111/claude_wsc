@@ -25,7 +25,6 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var rules = new Rules { MinBet = options.MinBet, MaxBet = options.MaxBet };
-var session = new GameSession(options, new Shoe(rules, options.Seed), Console.In, Console.Out, CardFormatter.ConsoleSupportsColor());
+var session = new GameSession(options, new Shoe(options.CreateRules(), options.Seed), Console.In, Console.Out, CardFormatter.ConsoleSupportsColor());
 await session.RunAsync(cts.Token);
 return 0;

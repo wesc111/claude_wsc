@@ -90,10 +90,26 @@
     </Window.Resources>
 
     <DockPanel Margin="20">
-        <!-- Header: bankroll and Leave table. -->
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+        <!-- Header: bankroll, shoe, decks and Leave table. -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
             <TextBlock Text="{Binding BankrollText}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Content="Leave table" Command="{Binding LeaveTableCommand}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,30,0"
+                        ToolTip.Tip="Cards left in the shoe; the white mark shows where it is reshuffled.">
+                <TextBlock Text="{Binding ShoeText}" FontSize="16" VerticalAlignment="Center" MinWidth="120" />
+                <!-- Bar width must match TableViewModel.ShoeBarWidth. -->
+                <Canvas Width="200" Height="14" VerticalAlignment="Center">
+                    <ProgressBar Width="200" MinWidth="200" Height="14" MinHeight="14" Minimum="0"
+                                 Maximum="{Binding ShoeTotal}" Value="{Binding ShoeRemaining}"
+                                 Foreground="#ffe08a" Background="#33ffffff" />
+                    <Rectangle Canvas.Left="{Binding ReshuffleMarkerLeft}" Width="2" Height="14" Fill="White" />
+                </Canvas>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="Decks:" FontSize="16" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding DeckOptions}" SelectedItem="{Binding Decks}"
+                          IsEnabled="{Binding CanChangeDecks}" MinWidth="70" VerticalAlignment="Center" />
+                <Button Content="Leave table" Command="{Binding LeaveTableCommand}" Margin="20,0,0,0" />
+            </StackPanel>
         </Grid>
 
         <!-- Footer: bet, actions, status. -->

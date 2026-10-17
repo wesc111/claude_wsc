@@ -28,12 +28,14 @@ public sealed class GameSessionTests
             """
             Blackjack – bankroll 1000, bets 10–500
 
+            Shoe: 4 of 4 cards left.
             Bankroll: 1000   Your bet (10–500, Enter = 10, q = quit): 
             Dealer:  K♠ [??]
             You:     10♠ 9♠   (19)
             (h)it, (s)tand, (d)ouble, (q)uit after this round: Dealer:  K♠ 8♠   (18)
             Result:  You win  +25   Bankroll: 1025
 
+            Shoe: 0 of 4 cards left.
             Bankroll: 1025   Your bet (10–500, Enter = 25, q = quit): 
             Session summary
               Rounds: 1   Wins: 1   Losses: 0   Pushes: 0
