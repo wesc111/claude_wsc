@@ -6,8 +6,24 @@ namespace Blackjack.Reports;
 /// <summary>Saves a <see cref="SessionLog"/> as a text report and two CSV files (SPEC 8a, E2).</summary>
 public static class SessionLogFiles
 {
-    /// <summary>The default directory: <c>log</c> below the current working directory.</summary>
-    public static string DefaultDirectory => Path.Combine(Environment.CurrentDirectory, "log");
+    /// <summary>
+    /// The default directory: <c>~/Documents/Blackjack/log</c> when running from a macOS app bundle
+    /// (started from the Finder, the working directory is <c>/</c>), otherwise <c>log</c> below the working directory.
+    /// </summary>
+    public static string DefaultDirectory => ResolveDirectory(
+        AppContext.BaseDirectory,
+        Environment.CurrentDirectory,
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+
+    /// <summary>The log directory for the given program, working and documents directories (see <see cref="DefaultDirectory"/>).</summary>
+    public static string ResolveDirectory(string baseDirectory, string currentDirectory, string documentsDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(baseDirectory);
+        var inAppBundle = baseDirectory.Replace('\\', '/').Contains(".app/Contents/MacOS", StringComparison.Ordinal);
+        return inAppBundle
+            ? Path.Combine(documentsDirectory, "Blackjack", "log")
+            : Path.Combine(currentDirectory, "log");
+    }
 
     /// <summary>
     /// Writes <c>blackjack_&lt;start&gt;.txt</c>, <c>…_statistics.csv</c> and <c>…_rounds.csv</c> into

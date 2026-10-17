@@ -37,6 +37,7 @@ dotnet test
 dotnet run --project src/Blackjack.ConsoleApp -- --help   # play the console game (M2)
 dotnet run -c Release --project src/Blackjack.Simulation -- --strategy basic   # run a simulation (M3)
 dotnet run --project src/Blackjack.Gui   # play with the Avalonia GUI (M5)
+./scripts/make-macos-app.sh   # build dist/Blackjack.app and dist/Blackjack-<version>.dmg (E3)
 ```
 
 A task is only complete when the build has no warnings and all tests pass.

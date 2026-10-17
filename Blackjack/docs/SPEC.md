@@ -596,7 +596,7 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 
 ### E2 – Session statistics files
 
-- When a session ends with at least one completed round, the GUI and the console app write three files into the directory `log` below the current working directory (created if missing; ignored by git):
+- When a session ends with at least one completed round, the GUI and the console app write three files into the directory `log` below the current working directory (created if missing; ignored by git; for the macOS app see E3):
   - `blackjack_<yyyy-MM-dd_HH-mm-ss>.txt` – readable report: header (start/end time, rules), session statistics, then the list of all rounds (one line per hand, bet, cards with totals, dealer cards, result, net, bankroll after the round).
   - `blackjack_<…>_statistics.csv` – the statistics as `Metric,Value` rows.
   - `blackjack_<…>_rounds.csv` – one row per hand: `Round,Time,Hand,Bet,PlayerCards,PlayerTotal,Doubled,FromSplit,DealerCards,DealerTotal,Outcome,Net,BankrollAfter`.
@@ -605,6 +605,16 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - The path of the text file is shown (GUI status line, console after the summary). If writing fails, an error message is shown and the program continues.
 - Statistics (`SessionStatistics` in Core, extended): rounds, hands, wins/losses/pushes per hand, player Blackjacks, player busts (hands), dealer busts (rounds), doubles and doubles won, split rounds, initial bets, total wagered, net (also in % of initial bets), start/end/highest/lowest bankroll, biggest win and biggest loss with round number.
 - The report code lives in the new library `Blackjack.Reports` (references Core, no packages), used by both apps; Core stays free of file I/O.
+
+### E3 – macOS app and DMG
+
+- `scripts/make-macos-app.sh` builds `dist/Blackjack.app` and `dist/Blackjack-<version>.dmg` (`dist/` is ignored by git):
+  `dotnet publish` Release for `osx-arm64`, self-contained (no .NET needed on the target Mac); Apple Silicon only.
+- Bundle: `Info.plist` (name Blackjack, identifier `com.wesc111.blackjack`, version from `<Version>` in `Blackjack.Gui.csproj`, minimum macOS 13), icon `Blackjack.icns` created from `src/Blackjack.Gui/Assets/icon-1024.png` (jack of hearts and ace of spades) with `sips` and `iconutil`.
+- Signing: every file in `Contents/MacOS` and then the bundle are signed ad-hoc (`codesign -s -`). No notarization: on other Macs the first start needs right-click → Open.
+- The DMG contains the app and a link to `/Applications` for drag-and-drop installation.
+- Log directory: started from an app bundle, the statistics files of E2 go to `~/Documents/Blackjack/log` (the working directory is `/` when started from the Finder); otherwise `log` below the working directory as before.
+- The application name shown by macOS (menu bar) is "Blackjack".
 
 ## 9. Non-goals (not part of any current milestone)
 

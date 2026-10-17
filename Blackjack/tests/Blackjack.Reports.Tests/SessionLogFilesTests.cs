@@ -84,4 +84,16 @@ public sealed class SessionLogFilesTests : IDisposable
     [Fact]
     public void DefaultDirectoryIsLogBelowTheWorkingDirectory() =>
         Assert.Equal(Path.Combine(Environment.CurrentDirectory, "log"), SessionLogFiles.DefaultDirectory);
+
+    [Fact]
+    public void AppBundleWritesIntoTheDocumentsFolder() =>
+        Assert.Equal(
+            Path.Combine("/Users/me/Documents", "Blackjack", "log"),
+            SessionLogFiles.ResolveDirectory("/Applications/Blackjack.app/Contents/MacOS/", "/", "/Users/me/Documents"));
+
+    [Fact]
+    public void OutsideAnAppBundleTheWorkingDirectoryIsUsed() =>
+        Assert.Equal(
+            Path.Combine("/Users/me/Developer/Blackjack", "log"),
+            SessionLogFiles.ResolveDirectory("/Users/me/Developer/Blackjack/src/Blackjack.Gui/bin/Release/net10.0/", "/Users/me/Developer/Blackjack", "/Users/me/Documents"));
 }
