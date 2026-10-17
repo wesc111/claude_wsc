@@ -1,0 +1,52 @@
+# Blackjack (see Blackjack/docs/SPEC.md, E5): build without warnings and run all tests on macOS and Linux.
+name: Blackjack CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Blackjack/**"
+      - ".github/workflows/blackjack.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Blackjack/**"
+      - ".github/workflows/blackjack.yml"
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    defaults:
+      run:
+        working-directory: Blackjack
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: Blackjack/global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Blackjack/**/*.csproj', 'Blackjack/Directory.Build.props', 'Blackjack/global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # TreatWarningsAsErrors (Directory.Build.props) makes any warning fail the build.
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Test
+        run: dotnet test -c Release --no-build

@@ -41,4 +41,5 @@ dotnet run --project src/Blackjack.Gui   # play with the Avalonia GUI (M5)
 ```
 
 A task is only complete when the build has no warnings and all tests pass.
+CI (`.github/workflows/blackjack.yml` in the repository root, spec E5) runs the same on macOS and Linux for every push to `main`; it must stay green.
 Every rule in the spec's acceptance criteria tables must be covered by a test.

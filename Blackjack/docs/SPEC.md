@@ -627,6 +627,14 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - The chips stay in the bet area during the round; the bet per hand (Double, Split) is shown at the hands as before.
 - Tests (ViewModel): adding, removing, Clear, stack order and counts, splitting into chips, chips disabled at the maximum and outside the betting phase.
 
+### E5 – Continuous integration
+
+- GitHub Actions workflow `.github/workflows/blackjack.yml` in the root of the repository `wesc111/claude_wsc` (the Blackjack folder is part of that monorepo).
+- Runs on push and pull request to `main` when files below `Blackjack/` or the workflow itself change, and manually (`workflow_dispatch`).
+- Jobs on `macos-latest` (Apple Silicon, the target platform) and `ubuntu-latest`, independent of each other (`fail-fast: false`).
+- Steps: checkout, .NET SDK from `Blackjack/global.json`, NuGet cache, `dotnet build -c Release` (warnings are errors), `dotnet test -c Release --no-build` (all tests, including the simulation plausibility checks).
+- A change is only complete when the CI run is green. Building the app bundle and DMG in CI belongs to the release workflow (next step), not to this one.
+
 ## 9. Non-goals (not part of any current milestone)
 
 - Insurance, Surrender, Even Money
