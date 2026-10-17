@@ -144,6 +144,7 @@ Blackjack.slnx
 │  ├─ Blackjack.Core/            Class library: cards, shoe, hand, rules, engine, interfaces
 │  ├─ Blackjack.ConsoleApp/      Console game for a human player          (M2)
 │  ├─ Blackjack.Simulation/      AI players, simulator, statistics          (M3)
+│  ├─ Blackjack.Reports/         Session statistics files for console and GUI (E2)
 │  └─ Blackjack.Gui/             Avalonia app                              (M5)
 ├─ tests/
 │  ├─ Blackjack.TestSupport/     Shared test helpers: FixedCardSource, card parsing (M2)
@@ -592,6 +593,18 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - GUI:
   - Header shows `Shoe: 247 / 312` and a progress bar of the cards left, with a marker where the shoe will be reshuffled (at `Penetration`, i.e. 25 % left with the default 75 %). Updated after each dealt card and after a reshuffle.
   - Deck selector `Decks` 1–8 (default 6). Enabled only before the first round of a game (at start and after Game over / Leave table); a change before the first round creates a fresh shoe immediately, a change after the session ended applies to New game. Disabled while a game has rounds.
+
+### E2 – Session statistics files
+
+- When a session ends with at least one completed round, the GUI and the console app write three files into the directory `log` below the current working directory (created if missing; ignored by git):
+  - `blackjack_<yyyy-MM-dd_HH-mm-ss>.txt` – readable report: header (start/end time, rules), session statistics, then the list of all rounds (one line per hand, bet, cards with totals, dealer cards, result, net, bankroll after the round).
+  - `blackjack_<…>_statistics.csv` – the statistics as `Metric,Value` rows.
+  - `blackjack_<…>_rounds.csv` – one row per hand: `Round,Time,Hand,Bet,PlayerCards,PlayerTotal,Doubled,FromSplit,DealerCards,DealerTotal,Outcome,Net,BankrollAfter`.
+  - CSV files are UTF-8 with BOM (card symbols), invariant culture; the timestamp is the session start in local time.
+- Session end: GUI – Leave table, bankroll below the minimum bet, closing the window; console – quit, bankroll below the minimum bet, end of input, Ctrl+C. Aborted rounds are not included. Files are written once per session.
+- The path of the text file is shown (GUI status line, console after the summary). If writing fails, an error message is shown and the program continues.
+- Statistics (`SessionStatistics` in Core, extended): rounds, hands, wins/losses/pushes per hand, player Blackjacks, player busts (hands), dealer busts (rounds), doubles and doubles won, split rounds, initial bets, total wagered, net (also in % of initial bets), start/end/highest/lowest bankroll, biggest win and biggest loss with round number.
+- The report code lives in the new library `Blackjack.Reports` (references Core, no packages), used by both apps; Core stays free of file I/O.
 
 ## 9. Non-goals (not part of any current milestone)
 

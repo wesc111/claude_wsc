@@ -1,5 +1,6 @@
 using System.Text;
 using Blackjack.ConsoleApp;
+using Blackjack.Reports;
 
 if (!ConsoleOptions.TryParse(args, out var options, out var error))
 {
@@ -25,6 +26,8 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var session = new GameSession(options, new Shoe(options.CreateRules(), options.Seed), Console.In, Console.Out, CardFormatter.ConsoleSupportsColor());
+var session = new GameSession(
+    options, new Shoe(options.CreateRules(), options.Seed), Console.In, Console.Out, CardFormatter.ConsoleSupportsColor(),
+    SessionLogFiles.DefaultDirectory);
 await session.RunAsync(cts.Token);
 return 0;

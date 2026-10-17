@@ -207,7 +207,7 @@ public sealed class TableViewModelTests
 
         Assert.Equal(TablePhase.Left, vm.Phase);
         Assert.True(vm.IsSessionOver);
-        Assert.Equal("You left the table. Rounds: 1, wins: 1, losses: 0, pushes: 0, net: +10.", vm.Status);
+        Assert.Equal("You left the table. Rounds: 1, wins: 1, losses: 0, pushes: 0, net: +10. Statistics saved to log/test.txt.", vm.Status);
         Assert.False(vm.DealCommand.CanExecute(null));
 
         t.Execute(vm.NewGameCommand);
@@ -371,5 +371,117 @@ public sealed class TableViewModelTests
         Assert.Equal([6, 1], t.UsedRules.Select(r => r.Decks));
         Assert.True(vm.CanChangeDecks);
         Assert.Equal("Shoe: 4 / 4", vm.ShoeText);
+    }
+
+    [Fact]
+    public void LeavingSavesTheStatisticsOnce()
+    {
+        var t = Table.Start("10 9 9 8");
+        var vm = t.ViewModel;
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+
+        t.Execute(vm.LeaveTableCommand);
+        t.Do(vm.Shutdown);
+
+        var log = Assert.Single(t.SavedLogs);
+        Assert.Single(log.Rounds);
+        Assert.Equal(1010m, log.Statistics.FinalBankroll);
+        Assert.EndsWith("Statistics saved to log/test.txt.", vm.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GameOverSavesTheStatistics()
+    {
+        var t = Table.Start("10 9 6 8", bankroll: 10m);
+        var vm = t.ViewModel;
+        t.Execute(vm.DealCommand);
+
+        t.Execute(vm.StandCommand);
+
+        Assert.Equal(TablePhase.GameOver, vm.Phase);
+        Assert.Single(t.SavedLogs);
+        Assert.Contains("Statistics saved to log/test.txt.", vm.Status, StringComparison.Ordinal);
+        Assert.EndsWith("Press New game to play again.", vm.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ClosingTheWindowSavesTheStatistics()
+    {
+        var t = Table.Start("10 9 9 8 10 9 7 8");
+        var vm = t.ViewModel;
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+        t.Execute(vm.DealCommand);
+
+        // Closed during the second round: only the completed first round is in the log.
+        t.Do(vm.Shutdown);
+        await vm.Session;
+
+        var log = Assert.Single(t.SavedLogs);
+        Assert.Single(log.Rounds);
+    }
+
+    [Fact]
+    public void NothingIsSavedWithoutARound()
+    {
+        var t = Table.Start("10 9 9 8");
+
+        t.Execute(t.ViewModel.LeaveTableCommand);
+        t.Do(t.ViewModel.Shutdown);
+
+        Assert.Empty(t.SavedLogs);
+        Assert.Equal("You left the table. Rounds: 0, wins: 0, losses: 0, pushes: 0, net: 0.", t.ViewModel.Status);
+    }
+
+    [Fact]
+    public void EveryGameGetsItsOwnLog()
+    {
+        var t = new Table(1000m, "10 9 9 8", "10 9 7 8");
+        var vm = t.ViewModel;
+        t.Do(vm.Start);
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+        t.Execute(vm.LeaveTableCommand);
+        t.Execute(vm.NewGameCommand);
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+
+        t.Execute(vm.LeaveTableCommand);
+
+        Assert.Equal(2, t.SavedLogs.Count);
+        Assert.NotSame(t.SavedLogs[0], t.SavedLogs[1]);
+        Assert.Equal(HandOutcome.Win, t.SavedLogs[0].Rounds[0].Result.PlayerHands[0].Outcome);
+        Assert.Equal(HandOutcome.Push, t.SavedLogs[1].Rounds[0].Result.PlayerHands[0].Outcome);
+    }
+
+    [Fact]
+    public void LogUsesTheChosenNumberOfDecks()
+    {
+        var t = new Table(1000m, "10 9 9 8", "10 9 9 8");
+        var vm = t.ViewModel;
+        t.Do(vm.Start);
+        t.Do(() => vm.Decks = 3);
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+
+        t.Execute(vm.LeaveTableCommand);
+
+        Assert.Equal(3, Assert.Single(t.SavedLogs).Rules.Decks);
+    }
+
+    [Fact]
+    public void WriteErrorIsShownAndTheGameGoesOn()
+    {
+        var t = Table.Start("10 9 9 8");
+        var vm = t.ViewModel;
+        t.FailSaving = true;
+        t.Execute(vm.DealCommand);
+        t.Execute(vm.StandCommand);
+
+        t.Execute(vm.LeaveTableCommand);
+
+        Assert.EndsWith("Could not write the statistics files: disk full", vm.Status, StringComparison.Ordinal);
+        Assert.True(vm.NewGameCommand.CanExecute(null));
     }
 }

@@ -7,9 +7,10 @@ public sealed class GameSessionTests
 
     private readonly StringWriter _output = new() { NewLine = "\n" };
 
-    private async Task<GameSession> RunAsync(string cards, TextReader input, ConsoleOptions? options = null, CancellationToken? ct = null)
+    private async Task<GameSession> RunAsync(string cards, TextReader input, ConsoleOptions? options = null, CancellationToken? ct = null,
+                                             string? logDirectory = null)
     {
-        var session = new GameSession(options ?? new ConsoleOptions(), new FixedCardSource(cards), input, _output, useColor: false);
+        var session = new GameSession(options ?? new ConsoleOptions(), new FixedCardSource(cards), input, _output, useColor: false, logDirectory);
         await session.RunAsync(ct ?? Ct);
         return session;
     }
@@ -169,5 +170,117 @@ public sealed class GameSessionTests
 
         Assert.Contains("Blackjack – bankroll 300, bets 5–50", Output, StringComparison.Ordinal);
         Assert.Contains("Your bet (5–50, Enter = 5, q = quit)", Output, StringComparison.Ordinal);
+    }
+
+    private static string TempLogDirectory() =>
+        Path.Combine(Path.GetTempPath(), "blackjack-console-tests-" + Guid.NewGuid().ToString("N"), "log");
+
+    private static void DeleteRoot(string logDirectory)
+    {
+        var root = Path.GetDirectoryName(logDirectory)!;
+        if (Directory.Exists(root))
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task StatisticsFilesAreWrittenWhenThePlayerQuits()
+    {
+        var log = TempLogDirectory();
+        try
+        {
+            await RunAsync("10 K 9 8", new StringReader("25\ns\nq\n"), logDirectory: log);
+
+            var files = Directory.GetFiles(log).Select(Path.GetFileName).ToList();
+            Assert.Equal(3, files.Count);
+            Assert.Contains(files, f => f!.EndsWith(".txt", StringComparison.Ordinal));
+            Assert.Contains(files, f => f!.EndsWith("_statistics.csv", StringComparison.Ordinal));
+            Assert.Contains(files, f => f!.EndsWith("_rounds.csv", StringComparison.Ordinal));
+            Assert.Contains("  Statistics saved to ", Output, StringComparison.Ordinal);
+            Assert.Contains("(and two CSV files).", Output, StringComparison.Ordinal);
+            var text = await File.ReadAllTextAsync(Directory.GetFiles(log, "*.txt").Single(), Ct);
+            Assert.Contains("Rounds                   1   (1 hands)", text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteRoot(log);
+        }
+    }
+
+    [Fact]
+    public async Task NoFilesWithoutARound()
+    {
+        var log = TempLogDirectory();
+        try
+        {
+            await RunAsync("10 K 9 8", new StringReader("q\n"), logDirectory: log);
+
+            Assert.False(Directory.Exists(log));
+            Assert.DoesNotContain("Statistics saved", Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteRoot(log);
+        }
+    }
+
+    [Fact]
+    public async Task StatisticsFilesAreWrittenWhenTheBankrollRunsOut()
+    {
+        var log = TempLogDirectory();
+        try
+        {
+            await RunAsync("10 K 7 8", new StringReader("\ns\n"), new ConsoleOptions { Bankroll = 10m }, logDirectory: log);
+
+            Assert.Contains("Your bankroll is below the minimum bet.", Output, StringComparison.Ordinal);
+            Assert.Equal(3, Directory.GetFiles(log).Length);
+        }
+        finally
+        {
+            DeleteRoot(log);
+        }
+    }
+
+    [Fact]
+    public async Task StatisticsFilesAreWrittenAfterCtrlC()
+    {
+        var log = TempLogDirectory();
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            // One round is played, then Ctrl+C arrives at the next bet prompt.
+            var input = new BlockingReader(cts.Cancel, "25", "s");
+
+            await RunAsync("10 K 9 8", input, ct: cts.Token, logDirectory: log);
+
+            Assert.Contains("Game aborted", Output, StringComparison.Ordinal);
+            var rounds = await File.ReadAllLinesAsync(Directory.GetFiles(log, "*_rounds.csv").Single(), Ct);
+            Assert.Equal(2, rounds.Length);
+        }
+        finally
+        {
+            DeleteRoot(log);
+        }
+    }
+
+    [Fact]
+    public async Task WriteErrorIsReportedAndTheProgramContinues()
+    {
+        var log = TempLogDirectory();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(log)!);
+            await File.WriteAllTextAsync(log, "a file where the directory should be", Ct);
+
+            await RunAsync("10 K 9 8", new StringReader("25\ns\nq\n"), logDirectory: log);
+
+            Assert.Contains("  Could not write the statistics files: ", Output, StringComparison.Ordinal);
+            Assert.Contains("Session summary", Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteRoot(log);
+        }
     }
 }

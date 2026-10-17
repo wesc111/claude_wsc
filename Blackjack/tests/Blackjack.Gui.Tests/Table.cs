@@ -1,4 +1,5 @@
 using Blackjack.Gui.ViewModels;
+using Blackjack.Reports;
 
 namespace Blackjack.Gui.Tests;
 
@@ -13,13 +14,13 @@ public sealed class Table
     public Table(decimal bankroll = 1000m, params string[] shoes)
     {
         _sources = new Queue<FixedCardSource>(shoes.Select(s => new FixedCardSource(s)));
-        ViewModel = new TableViewModel(Rules.Default, NextSource, bankroll, TimeSpan.Zero);
+        ViewModel = new TableViewModel(Rules.Default, NextSource, bankroll, TimeSpan.Zero, SaveLog);
     }
 
     public Table(Func<Rules, ICardSource> factory)
     {
         _sources = new Queue<FixedCardSource>();
-        ViewModel = new TableViewModel(Rules.Default, factory, 1000m, TimeSpan.Zero);
+        ViewModel = new TableViewModel(Rules.Default, factory, 1000m, TimeSpan.Zero, SaveLog);
     }
 
     public TableViewModel ViewModel { get; }
@@ -27,6 +28,23 @@ public sealed class Table
     public FixedCardSource? LastSource { get; private set; }
 
     public List<Rules> UsedRules { get; } = [];
+
+    /// <summary>The logs passed to the save function, in order.</summary>
+    public List<SessionLog> SavedLogs { get; } = [];
+
+    /// <summary>Makes the save function throw an <see cref="IOException"/>.</summary>
+    public bool FailSaving { get; set; }
+
+    private string SaveLog(SessionLog log)
+    {
+        if (FailSaving)
+        {
+            throw new IOException("disk full");
+        }
+
+        SavedLogs.Add(log);
+        return "log/test.txt";
+    }
 
     public static Table Start(string cards, decimal bankroll = 1000m)
     {

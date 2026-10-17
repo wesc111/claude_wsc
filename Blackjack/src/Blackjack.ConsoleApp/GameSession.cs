@@ -1,3 +1,5 @@
+using Blackjack.Reports;
+
 namespace Blackjack.ConsoleApp;
 
 /// <summary>Plays rounds until the player leaves or cannot afford the minimum bet, then shows the session summary.</summary>
@@ -8,9 +10,19 @@ internal sealed class GameSession
     private readonly BlackjackGame _game;
     private readonly ConsolePlayer _player;
     private readonly TextWriter _output;
+    private readonly SessionLog _log;
+    private readonly string? _logDirectory;
 
     /// <summary>Creates a session with its own game, player and display.</summary>
-    public GameSession(ConsoleOptions options, ICardSource cards, TextReader input, TextWriter output, bool useColor)
+    /// <param name="options">The command-line options.</param>
+    /// <param name="cards">The shoe.</param>
+    /// <param name="input">Where bets and actions are read from.</param>
+    /// <param name="output">Where the table is shown.</param>
+    /// <param name="useColor">Whether red suits are shown in red.</param>
+    /// <param name="logDirectory">Where the statistics files are written at the end; <c>null</c> = no files.</param>
+    /// <param name="clock">The time source of the log; the local time by default.</param>
+    public GameSession(ConsoleOptions options, ICardSource cards, TextReader input, TextWriter output, bool useColor,
+                       string? logDirectory = null, Func<DateTimeOffset>? clock = null)
     {
         _options = options;
         _output = output;
@@ -18,10 +30,15 @@ internal sealed class GameSession
         var renderer = new TableRenderer(output, new CardFormatter(useColor));
         _game = new BlackjackGame(_rules, cards, options.Bankroll, [renderer]);
         _player = new ConsolePlayer(input, output, cards);
+        _logDirectory = logDirectory;
+        _log = new SessionLog(_rules, options.Bankroll, clock);
     }
 
     /// <summary>The statistics of the completed rounds.</summary>
-    public SessionStatistics Statistics { get; } = new();
+    public SessionStatistics Statistics => _log.Statistics;
+
+    /// <summary>The log of the completed rounds.</summary>
+    public SessionLog Log => _log;
 
     /// <summary>The current bankroll.</summary>
     public decimal Bankroll => _game.Bankroll ?? 0m;
@@ -48,7 +65,7 @@ internal sealed class GameSession
                     break;
                 }
 
-                Statistics.Record(result);
+                _log.Record(result);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -58,6 +75,25 @@ internal sealed class GameSession
         }
 
         WriteSummary();
+        SaveLog();
+    }
+
+    private void SaveLog()
+    {
+        if (_logDirectory is null || _log.Rounds.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var path = SessionLogFiles.Save(_log, _logDirectory);
+            _output.WriteLine($"  Statistics saved to {SessionLogFiles.DisplayPath(path)} (and two CSV files).");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _output.WriteLine($"  Could not write the statistics files: {ex.Message}");
+        }
     }
 
     private void WriteSummary()

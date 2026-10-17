@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Blackjack.Reports;
 using Blackjack.Gui.ViewModels;
 using Blackjack.Gui.Views;
 
@@ -21,7 +22,9 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var rules = Rules.Default;
-            var table = new TableViewModel(rules, r => new Shoe(r), startingBankroll: 1000m, DealDelay);
+            var table = new TableViewModel(
+                rules, r => new Shoe(r), startingBankroll: 1000m, DealDelay,
+                saveLog: log => SessionLogFiles.DisplayPath(SessionLogFiles.Save(log, SessionLogFiles.DefaultDirectory)));
             var window = new MainWindow { DataContext = table };
             window.Closing += (_, _) => table.Shutdown();
             desktop.MainWindow = window;

@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Blackjack.Core\Blackjack.Core.csproj" />
+    <ProjectReference Include="..\Blackjack.Reports\Blackjack.Reports.csproj" />
   </ItemGroup>
 
 </Project>

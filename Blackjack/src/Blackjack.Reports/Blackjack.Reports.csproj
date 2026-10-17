@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Blackjack.Reports</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Blackjack.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Blackjack.Core\Blackjack.Core.csproj" />
+  </ItemGroup>
+
+</Project>

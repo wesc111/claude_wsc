@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Blackjack.Reports;
 
 namespace Blackjack.Gui.ViewModels;
 
@@ -25,7 +26,10 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private bool _restartRequested;
     private int _shoeRemaining;
     private int _shoeTotal;
-    private SessionStatistics _statistics = new();
+    private readonly Func<SessionLog, string>? _saveLog;
+    private readonly Func<DateTimeOffset>? _clock;
+    private SessionLog _log;
+    private bool _logSaved;
     private TaskCompletionSource? _newGame;
     private TablePhase _phase = TablePhase.Dealing;
     private decimal _bankroll;
@@ -41,7 +45,10 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <param name="cardSourceFactory">Creates the shoe for each new game from the rules (with the selected number of decks).</param>
     /// <param name="startingBankroll">The bankroll of each new game.</param>
     /// <param name="dealDelay">Pause after each card for the deal animation; <see cref="TimeSpan.Zero"/> in tests.</param>
-    public TableViewModel(Rules rules, Func<Rules, ICardSource> cardSourceFactory, decimal startingBankroll, TimeSpan dealDelay)
+    /// <param name="saveLog">Saves the statistics files at the end of a session and returns the path to show; <c>null</c> = no files.</param>
+    /// <param name="clock">The time source of the log; the local time by default.</param>
+    public TableViewModel(Rules rules, Func<Rules, ICardSource> cardSourceFactory, decimal startingBankroll, TimeSpan dealDelay,
+                          Func<SessionLog, string>? saveLog = null, Func<DateTimeOffset>? clock = null)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(cardSourceFactory);
@@ -50,7 +57,10 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         _startingBankroll = startingBankroll;
         _dealDelay = dealDelay;
         _decks = rules.Decks;
+        _saveLog = saveLog;
+        _clock = clock;
         _game = NewGame();
+        _log = NewLog();
         _bankroll = startingBankroll;
 
         Player.BetRequested += OnBetRequested;
@@ -78,7 +88,10 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public ObservableCollection<HandViewModel> PlayerHands { get; } = [];
 
     /// <summary>The statistics of the current session.</summary>
-    public SessionStatistics Statistics => _statistics;
+    public SessionStatistics Statistics => _log.Statistics;
+
+    /// <summary>The log of the current session.</summary>
+    public SessionLog Log => _log;
 
     /// <summary>What the table is waiting for.</summary>
     public TablePhase Phase
@@ -178,7 +191,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     }
 
     /// <summary>Whether <see cref="Decks"/> can be changed now.</summary>
-    public bool CanChangeDecks => IsSessionOver || (Phase == TablePhase.Betting && _statistics.Rounds == 0);
+    public bool CanChangeDecks => IsSessionOver || (Phase == TablePhase.Betting && _log.Statistics.Rounds == 0);
 
     /// <summary>Cards left in the shoe.</summary>
     public int ShoeRemaining
@@ -245,8 +258,15 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>Starts the session loop. The first bet request is shown before this method returns.</summary>
     public void Start() => _session ??= RunAsync(_shutdown.Token);
 
-    /// <summary>Aborts the current round (bankroll restored) and ends the loop, e.g. when the window closes.</summary>
-    public void Shutdown() => _shutdown.Cancel();
+    /// <summary>
+    /// Aborts the current round (bankroll restored), ends the loop and saves the statistics files if they were not
+    /// saved yet, e.g. when the window closes.
+    /// </summary>
+    public void Shutdown()
+    {
+        _shutdown.Cancel();
+        SaveLog();
+    }
 
     /// <inheritdoc />
     public ValueTask OnShoeShuffledAsync(CancellationToken ct)
@@ -358,7 +378,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
                 await _newGame.Task.WaitAsync(ct);
                 _newGame = null;
                 _game = NewGame();
-                _statistics = new SessionStatistics();
+                _log = NewLog();
                 OnPropertyChanged(nameof(CanChangeDecks));
                 _lastBet = null;
                 Bankroll = _startingBankroll;
@@ -385,8 +405,8 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         {
             if (_game.Bankroll < _rules.MinBet)
             {
+                Status = $"Your bankroll is below the minimum bet. {Summary()}{SaveLog()} Press New game to play again.";
                 Phase = TablePhase.GameOver;
-                Status = $"Your bankroll is below the minimum bet. {Summary()} Press New game to play again.";
                 return;
             }
 
@@ -396,24 +416,25 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
                 // The number of decks was changed before the first round.
                 _restartRequested = false;
                 _game = NewGame();
+                _log = NewLog();
                 continue;
             }
 
             if (result is null)
             {
+                Status = $"You left the table. {Summary()}{SaveLog()}";
                 Phase = TablePhase.Left;
-                Status = $"You left the table. {Summary()}";
                 return;
             }
 
-            _statistics.Record(result);
+            _log.Record(result);
             OnPropertyChanged(nameof(CanChangeDecks));
         }
     }
 
     private string Summary() =>
-        $"Rounds: {_statistics.Rounds}, wins: {_statistics.Wins}, losses: {_statistics.Losses}, " +
-        $"pushes: {_statistics.Pushes}, net: {DisplayText.SignedMoney(_statistics.Net)}.";
+        $"Rounds: {_log.Statistics.Rounds}, wins: {_log.Statistics.Wins}, losses: {_log.Statistics.Losses}, " +
+        $"pushes: {_log.Statistics.Pushes}, net: {DisplayText.SignedMoney(_log.Statistics.Net)}.";
 
     private BlackjackGame NewGame()
     {
@@ -421,6 +442,31 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         _cardSource = _cardSourceFactory(rules);
         UpdateShoe();
         return new BlackjackGame(rules, _cardSource, _startingBankroll, [this]);
+    }
+
+    private SessionLog NewLog()
+    {
+        _logSaved = false;
+        return new SessionLog(_rules with { Decks = _decks }, _startingBankroll, _clock);
+    }
+
+    // Saves the statistics files once per session (only with rounds); returns the text for the status line.
+    private string SaveLog()
+    {
+        if (_saveLog is null || _logSaved || _log.Rounds.Count == 0)
+        {
+            return "";
+        }
+
+        _logSaved = true;
+        try
+        {
+            return $" Statistics saved to {_saveLog(_log)}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return $" Could not write the statistics files: {ex.Message}";
+        }
     }
 
     private void UpdateShoe()
