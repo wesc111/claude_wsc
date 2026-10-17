@@ -29,8 +29,8 @@ public sealed class TableViewModelTests
         var t = Table.Start("10 9 7 8");
         var vm = t.ViewModel;
 
-        t.Chip("25");
-        t.Chip("100");
+        t.Chip(25);
+        t.Chip(100);
 
         Assert.Equal(135m, vm.Bet);
         Assert.Equal("Bet: 135", vm.BetText);
@@ -39,21 +39,23 @@ public sealed class TableViewModelTests
 
         Assert.Equal(0m, vm.Bet);
         Assert.False(vm.DealCommand.CanExecute(null));
-        t.Chip("5");
+        t.Chip(5);
         Assert.False(vm.DealCommand.CanExecute(null), "5 is below the minimum bet");
     }
 
     [Fact]
-    public void BetAboveTheMaximumCannotBeDealt()
+    public void ChipAboveTheMaximumBetIsDisabled()
     {
         var t = Table.Start("10 9 7 8");
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < 4; i++)
         {
-            t.Chip("100");
+            t.Chip(100);
         }
 
-        Assert.Equal(510m, t.ViewModel.Bet);
-        Assert.False(t.ViewModel.DealCommand.CanExecute(null));
+        Assert.Equal(410m, t.ViewModel.Bet);
+        Assert.False(t.ViewModel.AddChipCommand.CanExecute(100), "510 is above MaxBet 500");
+        Assert.True(t.ViewModel.AddChipCommand.CanExecute(25));
+        Assert.True(t.ViewModel.DealCommand.CanExecute(null));
     }
 
     [Fact]
@@ -79,7 +81,7 @@ public sealed class TableViewModelTests
         Assert.True(vm.DoubleCommand.CanExecute(null));
         Assert.False(vm.SplitCommand.CanExecute(null));
         Assert.False(vm.DealCommand.CanExecute(null));
-        Assert.False(vm.AddChipCommand.CanExecute("5"));
+        Assert.False(vm.AddChipCommand.CanExecute(5));
         Assert.False(vm.LeaveTableCommand.CanExecute(null));
     }
 
@@ -136,7 +138,7 @@ public sealed class TableViewModelTests
     {
         // Blackjack completes the round inside Deal; the next bet must still default to 35.
         var t = Table.Start("A 9 K 7");
-        t.Chip("25");
+        t.Chip(25);
 
         t.Execute(t.ViewModel.DealCommand);
 
@@ -148,7 +150,7 @@ public sealed class TableViewModelTests
     {
         var t = Table.Start("10 9 9 8 10 9 9 8");
         var vm = t.ViewModel;
-        t.Chip("25");
+        t.Chip(25);
         t.Execute(vm.DealCommand);
         t.Execute(vm.StandCommand);
 
@@ -241,7 +243,7 @@ public sealed class TableViewModelTests
     {
         var t = Table.Start("10 9 7 8");
         var vm = t.ViewModel;
-        t.Chip("100");
+        t.Chip(100);
         t.Execute(vm.DealCommand);
 
         t.Do(vm.Shutdown);

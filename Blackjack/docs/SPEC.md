@@ -616,6 +616,17 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Log directory: started from an app bundle, the statistics files of E2 go to `~/Documents/Blackjack/log` (the working directory is `/` when started from the Finder); otherwise `log` below the working directory as before.
 - The application name shown by macOS (menu bar) is "Blackjack".
 
+### E4 – Chips and bet area (GUI)
+
+- Chips are drawn as vector graphics in XAML (no image files): a coloured disc with white edge spots, a white inner field and the value in the middle. Each value has its own colour: 5 red, 10 blue, 25 green, 100 black.
+- Layout: two columns. Left: the bet area and below it the bet buttons (chip tray, "Clear"). Middle: dealer and player hands, the result of the last round, below them the play buttons (Hit, Stand, Double, Split, New game), then set apart at the right the "Deal" button, highlighted (gold, larger, framed) because it starts the next round; below them the status line. Bet buttons and play buttons are in one row. Cards are shown at 150 × 218 (1.5 × the M5 size); the window is 1320 × 900.
+- Chip tray: clicking a chip puts it into the bet area. A chip is disabled when it would raise the bet above `BetContext.MaxAllowedBet` (MaxBet, limited by the bankroll), and outside the betting phase.
+- Bet area: an upright oval below the bankroll. One stack per chip value, the stacks above each other in ascending order of value; each stack is slightly offset so its height is visible (at most 8 chips drawn), with the number of chips beside it; the bet total below the stacks.
+- Clicking a stack in the bet area removes one chip of that value; "Clear" removes all chips.
+- Default bet: the area starts with the last bet (first round: MinBet), limited to `MaxAllowedBet`, split into as few chips as possible (e.g. 35 = 25 + 10). An amount that cannot be made with chips (fractional bankroll) is rounded down to a multiple of the smallest chip.
+- The chips stay in the bet area during the round; the bet per hand (Double, Split) is shown at the hands as before.
+- Tests (ViewModel): adding, removing, Clear, stack order and counts, splitting into chips, chips disabled at the maximum and outside the betting phase.
+
 ## 9. Non-goals (not part of any current milestone)
 
 - Insurance, Surrender, Even Money

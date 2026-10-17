@@ -73,9 +73,9 @@ public sealed class Table
         Do(() => command.Execute(null));
     }
 
-    public void Chip(string value)
+    public void Chip(int value)
     {
-        Assert.True(ViewModel.AddChipCommand.CanExecute(value));
+        Assert.True(ViewModel.AddChipCommand.CanExecute(value), $"chip {value} must be enabled");
         Do(() => ViewModel.AddChipCommand.Execute(value));
     }
 

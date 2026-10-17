@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Blackjack.Reports;
@@ -66,8 +65,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         Player.BetRequested += OnBetRequested;
         Player.DecisionRequested += OnDecisionRequested;
 
-        AddChipCommand = new RelayCommand<string>(AddChip, _ => Phase == TablePhase.Betting);
-        ClearBetCommand = new RelayCommand(() => Bet = 0m, () => Phase == TablePhase.Betting);
+        AddChipCommand = new RelayCommand<int>(AddChip, CanAddChip);
+        RemoveChipCommand = new RelayCommand<int>(RemoveChip, value => Phase == TablePhase.Betting && BetStacks.Any(s => s.Chip.Value == value));
+        ClearBetCommand = new RelayCommand(() => SetChips([]), () => Phase == TablePhase.Betting);
         DealCommand = new RelayCommand(Deal, () => Phase == TablePhase.Betting && Player.PendingBet?.IsValidBet(Bet) == true);
         LeaveTableCommand = new RelayCommand(() => Player.LeaveTable(), () => Phase == TablePhase.Betting);
         HitCommand = new RelayCommand(() => Choose(PlayerAction.Hit), () => Player.CanChoose(PlayerAction.Hit));
@@ -75,7 +75,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         DoubleCommand = new RelayCommand(() => Choose(PlayerAction.Double), () => Player.CanChoose(PlayerAction.Double));
         SplitCommand = new RelayCommand(() => Choose(PlayerAction.Split), () => Player.CanChoose(PlayerAction.Split));
         NewGameCommand = new RelayCommand(() => _newGame?.TrySetResult(), () => IsSessionOver);
-        _commands = [AddChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, NewGameCommand];
+        _commands = [AddChipCommand, RemoveChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, NewGameCommand];
     }
 
     /// <summary>The human player whose requests the buttons complete.</summary>
@@ -127,7 +127,13 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>The bankroll as text, e.g. <c>Bankroll: 1000</c>.</summary>
     public string BankrollText => $"Bankroll: {DisplayText.Money(Bankroll)}";
 
-    /// <summary>The bet for the next round, built with the chips.</summary>
+    /// <summary>The chips of the tray, one per value, ascending.</summary>
+    public IReadOnlyList<ChipViewModel> ChipTray { get; } = [.. ChipViewModel.Values.Select(v => new ChipViewModel(v))];
+
+    /// <summary>The chips in the bet area: one stack per value, ascending.</summary>
+    public ObservableCollection<ChipStackViewModel> BetStacks { get; } = [];
+
+    /// <summary>The bet for the next round: the sum of the chips in the bet area.</summary>
     public decimal Bet
     {
         get => _bet;
@@ -225,10 +231,13 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>Position of the reshuffle marker on the shoe bar: where the cards left reach 1 − penetration.</summary>
     public double ReshuffleMarkerLeft => ShoeBarWidth * (double)(1 - _rules.Penetration);
 
-    /// <summary>Adds a chip (parameter: its value as text).</summary>
-    public IRelayCommand<string> AddChipCommand { get; }
+    /// <summary>Puts a chip into the bet area (parameter: its value); disabled if the bet would exceed the maximum.</summary>
+    public IRelayCommand<int> AddChipCommand { get; }
 
-    /// <summary>Sets the bet to 0.</summary>
+    /// <summary>Takes one chip of the given value out of the bet area.</summary>
+    public IRelayCommand<int> RemoveChipCommand { get; }
+
+    /// <summary>Removes all chips from the bet area.</summary>
     public IRelayCommand ClearBetCommand { get; }
 
     /// <summary>Places the bet and deals.</summary>
@@ -478,7 +487,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private void OnBetRequested(object? sender, BetContext context)
     {
         var max = context.MaxAllowedBet;
-        Bet = Math.Clamp(_lastBet ?? _rules.MinBet, _rules.MinBet, max);
+        SetChips(ChipViewModel.Split(Math.Clamp(_lastBet ?? _rules.MinBet, _rules.MinBet, max)));
         var shuffled = _shuffled ? "The shoe has been shuffled. " : "";
         _shuffled = false;
         Status = $"{shuffled}Place your bet ({DisplayText.Money(_rules.MinBet)}–{DisplayText.Money(max)}) and press Deal.";
@@ -498,12 +507,68 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         RefreshCommands();
     }
 
-    private void AddChip(string? value)
+    private bool CanAddChip(int value) =>
+        Phase == TablePhase.Betting && ChipViewModel.Values.Contains(value)
+        && Player.PendingBet is { } context && Bet + value <= context.MaxAllowedBet;
+
+    private void AddChip(int value)
     {
-        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var chip))
+        if (!ChipViewModel.Values.Contains(value))
         {
-            Bet += chip;
+            return;
         }
+
+        var stack = BetStacks.FirstOrDefault(s => s.Chip.Value == value);
+        if (stack is not null)
+        {
+            stack.Count++;
+        }
+        else
+        {
+            var index = BetStacks.TakeWhile(s => s.Chip.Value < value).Count();
+            BetStacks.Insert(index, new ChipStackViewModel(new ChipViewModel(value)));
+        }
+
+        UpdateBet();
+    }
+
+    private void RemoveChip(int value)
+    {
+        var stack = BetStacks.FirstOrDefault(s => s.Chip.Value == value);
+        if (stack is null)
+        {
+            return;
+        }
+
+        if (stack.Count > 1)
+        {
+            stack.Count--;
+        }
+        else
+        {
+            BetStacks.Remove(stack);
+        }
+
+        UpdateBet();
+    }
+
+    private void SetChips(IEnumerable<int> chips)
+    {
+        BetStacks.Clear();
+        foreach (var group in chips.GroupBy(c => c).OrderBy(g => g.Key))
+        {
+            BetStacks.Add(new ChipStackViewModel(new ChipViewModel(group.Key)) { Count = group.Count() });
+        }
+
+        UpdateBet();
+    }
+
+    private void UpdateBet()
+    {
+        Bet = BetStacks.Sum(s => s.Chip.Value * (decimal)s.Count);
+
+        // The bet setter refreshes only when the sum changes, but Remove depends on the stacks themselves.
+        RefreshCommands();
     }
 
     private void Deal()

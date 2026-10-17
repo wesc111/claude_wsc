@@ -6,6 +6,8 @@
              RequestedThemeVariant="Dark">
     <Application.Resources>
         <views:CardImageConverter x:Key="CardImage" />
+        <views:ColorBrushConverter x:Key="ColorBrush" />
+        <views:LiftMarginConverter x:Key="LiftMargin" />
     </Application.Resources>
     <Application.Styles>
         <FluentTheme />
