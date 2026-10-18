@@ -8,6 +8,8 @@ Version 1.3. Classic look with traditional court cards. The author stated on his
 
 These cards are available as svg in cards-svg and as png in the cards-png directories.
 
+The GUI shows jack, queen and king in the alternative court designs (`jack_of_hearts2.png` etc.).
+
 ## Card back
 
 `card_back.svg` and `card_back.png` are not part of Byron Knoll's set. They were generated for this project

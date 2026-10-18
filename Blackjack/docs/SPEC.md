@@ -578,7 +578,7 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Display of bankroll, bet, dealer and player hands with totals (e.g. `soft 17`), bet and result per hand.
 - Bet with chips 5, 10, 25, 100 (added up) and "Clear"; default is the last bet; checked with `BetContext.IsValidBet`. When the bankroll falls below the minimum bet, a message with "New game" is shown.
 - Labels in English, like the rest of the project.
-- Card graphics: the PNG set in `cards-png/` (see `docs/CARDS.md`) including `card_back.png`, embedded as Avalonia resources. SVG is not used because `Avalonia.Svg.Skia` is only available for Avalonia 11.
+- Card graphics: the PNG set in `cards-png/` (see `docs/CARDS.md`) including `card_back.png`, embedded as Avalonia resources. Jack, queen and king use the alternative court designs `*_of_*2.png` (e.g. `jack_of_hearts2.png`); the plain court images are not embedded. Each card is drawn on a white card with a margin of 3 % of its width and height and a thin grey edge; the thin outline of the PNG is cropped, because the symbols of the set reach almost to the edge. SVG is not used because `Avalonia.Svg.Skia` is only available for Avalonia 11.
 - `SessionStatistics` (rounds, wins, losses, pushes, net) moves from the console app to Core, so console and GUI share it.
 - Must run on macOS (Apple Silicon); Windows and Linux desirable.
 
@@ -634,6 +634,18 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Jobs on `macos-latest` (Apple Silicon, the target platform) and `ubuntu-latest`, independent of each other (`fail-fast: false`).
 - Steps: checkout, .NET SDK from `Blackjack/global.json`, NuGet cache, `dotnet build -c Release` (warnings are errors), `dotnet test -c Release --no-build` (all tests, including the simulation plausibility checks).
 - A change is only complete when the CI run is green. Building the app bundle and DMG in CI belongs to the release workflow (next step), not to this one.
+
+### E6 – Dealing animation (GUI)
+
+- Header from the left: bankroll, `Shoe: 247 / 312` with the bar of E1, deck selector, "Leave table". The top right corner of the window shows the shoe as a vector graphic in XAML (no image file, after the example `misc/shoe_example.png`): a metal plate filling the corner as a triangle, its edge at 45° with a semicircular finger notch, and the next card (card back) lying at 45° under the plate, showing below its edge and in the notch.
+- Each dealt card is pulled out from under the plate and flies to its place in the hand (0.4 s, decelerating), starting at the size and 45° angle of the card in the shoe and turning straight. A card dealt face up leaves the shoe face down and turns over during the last part of the flight (scaled to zero width, image swapped, scaled back). The hole card flies face down.
+- When the hole card is revealed, it turns over in place (0.3 s).
+- The card in the hand becomes visible when the flight ends; the total of the hand is updated then. Its place is reserved from the start, so the layout does not jump.
+- The engine awaits each animation through the `IGameObserver` notifications, as before. The view model uses a small interface `ICardAnimator` (deal, turn over) implemented by the main window; without an animator (tests) it falls back to the configurable pause of M5 (0 in tests).
+- Split: the moved card changes hands without a flight, with the pause as before.
+- Closing the window cancels a running animation together with the round.
+- This replaces the slide-in animation of M5.
+- Tests (ViewModel, with a recording animator): every dealt card is passed to the animator in deal order and hidden until its animation ends; the total is updated afterwards; the engine waits for an unfinished animation; the hole card is passed face down and turned over on reveal, its value set during the turn; without an animator nothing changes.
 
 ## 9. Non-goals (not part of any current milestone)
 

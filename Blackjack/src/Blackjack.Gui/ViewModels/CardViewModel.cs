@@ -9,6 +9,7 @@ public sealed class CardViewModel : ObservableObject
     public const string BackImage = "card_back";
 
     private Card? _card;
+    private bool _isDealing;
 
     /// <summary>Creates a card; <c>null</c> means face down.</summary>
     public CardViewModel(Card? card)
@@ -30,13 +31,23 @@ public sealed class CardViewModel : ObservableObject
         }
     }
 
+    /// <summary>Whether the card is still flying from the shoe; the card in the hand is hidden until it arrives.</summary>
+    public bool IsDealing
+    {
+        get => _isDealing;
+        set => SetProperty(ref _isDealing, value);
+    }
+
     /// <summary>Whether the card is face up.</summary>
     public bool IsFaceUp => _card is not null;
 
-    /// <summary>The image file name without extension, e.g. <c>ace_of_spades</c>, <c>10_of_hearts</c> or <see cref="BackImage"/>.</summary>
+    /// <summary>The image file name without extension, e.g. <c>ace_of_spades</c>, <c>10_of_hearts</c>, <c>jack_of_hearts2</c> or <see cref="BackImage"/>.</summary>
     public string ImageName => _card is { } c ? ImageNameOf(c) : BackImage;
 
-    /// <summary>The image file name of a card in the Byron Knoll set.</summary>
+    /// <summary>
+    /// The image file name of a card in the Byron Knoll set. Court cards use the alternative
+    /// designs with traditional court figures (suffix <c>2</c>, e.g. <c>jack_of_hearts2</c>).
+    /// </summary>
     public static string ImageNameOf(Card card)
     {
         var rank = card.Rank switch
@@ -47,6 +58,7 @@ public sealed class CardViewModel : ObservableObject
             Rank.Jack => "jack",
             var r => ((int)r).ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
-        return $"{rank}_of_{card.Suit.ToString().ToLowerInvariant()}";
+        var design = card.Rank is Rank.Jack or Rank.Queen or Rank.King ? "2" : "";
+        return $"{rank}_of_{card.Suit.ToString().ToLowerInvariant()}{design}";
     }
 }

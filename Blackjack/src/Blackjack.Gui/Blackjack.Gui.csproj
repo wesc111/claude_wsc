@@ -5,7 +5,7 @@
     <RootNamespace>Blackjack.Gui</RootNamespace>
     <AssemblyName>BlackjackGui</AssemblyName>
     <!-- Shown in the app bundle (Info.plist) and the DMG name; see scripts/make-macos-app.sh. -->
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
@@ -18,8 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The 52 standard cards and the card back from cards-png (no jokers, no alternative court designs). -->
-    <AvaloniaResource Include="..\..\cards-png\*_of_*.png" Exclude="..\..\cards-png\*2.png" Link="Assets\Cards\%(Filename)%(Extension)" />
+    <!-- The 52 cards and the card back from cards-png: court cards in the alternative designs (*2.png), no jokers. -->
+    <AvaloniaResource Include="..\..\cards-png\*_of_*.png" Exclude="..\..\cards-png\*2.png;..\..\cards-png\jack_of_*.png;..\..\cards-png\queen_of_*.png;..\..\cards-png\king_of_*.png" Link="Assets\Cards\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\cards-png\jack_of_*2.png;..\..\cards-png\queen_of_*2.png;..\..\cards-png\king_of_*2.png" Link="Assets\Cards\%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\..\cards-png\card_back.png" Link="Assets\Cards\card_back.png" />
   </ItemGroup>
 

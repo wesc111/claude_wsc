@@ -7,7 +7,8 @@ namespace Blackjack.Gui.ViewModels;
 
 /// <summary>
 /// The Blackjack table: runs the session loop, offers the button commands and shows the course of each round.
-/// It is the engine's <see cref="IGameObserver"/> and awaits a short delay after each card, so the view can animate it.
+/// It is the engine's <see cref="IGameObserver"/> and awaits the <see cref="CardAnimator"/> for each card
+/// (or a short delay without one), so the view can animate it.
 /// The loop runs on the UI thread; the engine keeps that synchronization context.
 /// </summary>
 public sealed class TableViewModel : ObservableObject, IGameObserver
@@ -43,7 +44,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <param name="rules">The table rules.</param>
     /// <param name="cardSourceFactory">Creates the shoe for each new game from the rules (with the selected number of decks).</param>
     /// <param name="startingBankroll">The bankroll of each new game.</param>
-    /// <param name="dealDelay">Pause after each card for the deal animation; <see cref="TimeSpan.Zero"/> in tests.</param>
+    /// <param name="dealDelay">Pause after each card without <see cref="CardAnimator"/> and after a split; <see cref="TimeSpan.Zero"/> in tests.</param>
     /// <param name="saveLog">Saves the statistics files at the end of a session and returns the path to show; <c>null</c> = no files.</param>
     /// <param name="clock">The time source of the log; the local time by default.</param>
     public TableViewModel(Rules rules, Func<Rules, ICardSource> cardSourceFactory, decimal startingBankroll, TimeSpan dealDelay,
@@ -83,6 +84,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
     /// <summary>The dealer's hand.</summary>
     public HandViewModel Dealer { get; } = new("Dealer");
+
+    /// <summary>Animates dealing and turning over cards; <c>null</c> = only the pause after each card.</summary>
+    public ICardAnimator? CardAnimator { get; set; }
 
     /// <summary>The player's hands (more than one after a split).</summary>
     public ObservableCollection<HandViewModel> PlayerHands { get; } = [];
@@ -301,10 +305,29 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public async ValueTask OnCardDealtAsync(CardDealtNotification notification, CancellationToken ct)
     {
         var hand = notification.Recipient.IsDealer ? Dealer : PlayerHands[notification.Recipient.HandIndex];
-        hand.Cards.Add(new CardViewModel(notification.Card));
-        hand.UpdateTotal();
+        var card = new CardViewModel(notification.Card);
         UpdateShoe();
-        await PauseAsync(ct);
+        if (CardAnimator is { } animator)
+        {
+            card.IsDealing = true;
+            hand.Cards.Add(card);
+            try
+            {
+                await animator.DealAsync(card, ct);
+            }
+            finally
+            {
+                card.IsDealing = false;
+            }
+
+            hand.UpdateTotal();
+        }
+        else
+        {
+            hand.Cards.Add(card);
+            hand.UpdateTotal();
+            await PauseAsync(ct);
+        }
     }
 
     /// <inheritdoc />
@@ -337,6 +360,14 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public async ValueTask OnHoleCardRevealedAsync(HoleCardRevealedNotification notification, CancellationToken ct)
     {
         var hidden = Dealer.Cards.FirstOrDefault(c => !c.IsFaceUp);
+        if (hidden is not null && CardAnimator is { } animator)
+        {
+            await animator.TurnOverAsync(hidden, () => hidden.Card = notification.Card, ct);
+            hidden.Card = notification.Card;
+            Dealer.UpdateTotal();
+            return;
+        }
+
         if (hidden is not null)
         {
             hidden.Card = notification.Card;

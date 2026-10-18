@@ -8,9 +8,9 @@ public sealed class CardViewModelTests
     [InlineData("AS", "ace_of_spades")]
     [InlineData("10H", "10_of_hearts")]
     [InlineData("2C", "2_of_clubs")]
-    [InlineData("JD", "jack_of_diamonds")]
-    [InlineData("QH", "queen_of_hearts")]
-    [InlineData("KC", "king_of_clubs")]
+    [InlineData("JD", "jack_of_diamonds2")]
+    [InlineData("QH", "queen_of_hearts2")]
+    [InlineData("KC", "king_of_clubs2")]
     public void ImageNames(string card, string expected) =>
         Assert.Equal(expected, new CardViewModel(Cards.ParseOne(card)).ImageName);
 
@@ -32,7 +32,7 @@ public sealed class CardViewModelTests
 
         card.Card = Cards.ParseOne("KS");
 
-        Assert.Equal("king_of_spades", card.ImageName);
+        Assert.Equal("king_of_spades2", card.ImageName);
         Assert.Contains(nameof(CardViewModel.ImageName), changed);
         Assert.Contains(nameof(CardViewModel.IsFaceUp), changed);
     }

@@ -9,24 +9,20 @@
         Background="#0b5d2a">
 
     <Window.Styles>
-        <!-- Each new card slides in and fades in. -->
-        <Style Selector="Image.card">
+        <!-- A card: the PNG on a white card with a margin of 3 % of width and height (4.5 and 6.5), because
+             the symbols of the PNG set reach almost to its edge. -->
+        <Style Selector="Border.card">
             <Setter Property="Width" Value="150" />
             <Setter Property="Height" Value="218" />
-            <Style.Animations>
-                <Animation Duration="0:0:0.3" Easing="CubicEaseOut" FillMode="Forward">
-                    <!-- Margin and opacity only: Avalonia 12 has no animator for RenderTransform. Top and bottom
-                         margin change together, so the card moves without changing the layout height. -->
-                    <KeyFrame Cue="0%">
-                        <Setter Property="Opacity" Value="0" />
-                        <Setter Property="Margin" Value="0,-60,0,60" />
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="Opacity" Value="1" />
-                        <Setter Property="Margin" Value="0,0,0,0" />
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
+            <Setter Property="Padding" Value="4.5,6.5" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#808080" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+        <!-- While a card flies from the shoe (MainWindow.DealAsync), its place in the hand is reserved but empty. -->
+        <Style Selector="Border.card.dealing">
+            <Setter Property="Opacity" Value="0" />
         </Style>
         <Style Selector="Border.hand">
             <Setter Property="Padding" Value="12" />
@@ -132,6 +128,16 @@
             </Viewbox>
         </DataTemplate>
 
+        <!-- A card in a hand or in flight. The negative margin and the rounded clip crop the thin outline of the PNG,
+             including its rounded corners; the outer Border draws the card edge. -->
+        <DataTemplate x:Key="CardTemplate" x:DataType="vm:CardViewModel">
+            <Border Classes="card" Classes.dealing="{Binding IsDealing}">
+                <Border ClipToBounds="True" CornerRadius="7">
+                    <Image Margin="-1" Stretch="Fill" Source="{Binding ImageName, Converter={StaticResource CardImage}}" />
+                </Border>
+            </Border>
+        </DataTemplate>
+
         <!-- A hand: title with total, overlapping cards, bet and result. -->
         <DataTemplate x:Key="HandTemplate" x:DataType="vm:HandViewModel">
             <Border Classes="hand" Classes.active="{Binding IsActive}">
@@ -140,18 +146,13 @@
                         <TextBlock Classes="title" Text="{Binding Title}" />
                         <TextBlock Classes="title" Text="{Binding TotalText}" Foreground="#ffe08a" />
                     </StackPanel>
-                    <ItemsControl ItemsSource="{Binding Cards}" MinHeight="218">
+                    <ItemsControl ItemsSource="{Binding Cards}" ItemTemplate="{StaticResource CardTemplate}" MinHeight="218">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <!-- Negative spacing overlaps the cards; each card keeps its full size. -->
                                 <StackPanel Orientation="Horizontal" Spacing="-87" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:CardViewModel">
-                                <Image Classes="card" Source="{Binding ImageName, Converter={StaticResource CardImage}}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <!-- Hidden for the dealer, who has no bet. -->
                     <TextBlock Text="{Binding BetText}" IsVisible="{Binding BetText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -161,122 +162,158 @@
         </DataTemplate>
     </Window.Resources>
 
-    <!-- Two columns: betting at the left (bet area, chips, Clear, Deal), the table in the middle (hands, play buttons).
-         The chip row and the play buttons share one row, so all buttons are on one line. -->
-    <Grid Margin="20" ColumnDefinitions="Auto,*" RowDefinitions="Auto,*,Auto,Auto">
-        <!-- Header: bankroll, shoe, decks and Leave table. -->
-        <Grid Grid.ColumnSpan="2" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
-            <TextBlock Text="{Binding BankrollText}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,30,0"
-                        ToolTip.Tip="Cards left in the shoe; the white mark shows where it is reshuffled.">
-                <TextBlock Text="{Binding ShoeText}" FontSize="16" VerticalAlignment="Center" MinWidth="120" />
-                <!-- Bar width must match TableViewModel.ShoeBarWidth. -->
-                <Canvas Width="200" Height="14" VerticalAlignment="Center">
-                    <ProgressBar Width="200" MinWidth="200" Height="14" MinHeight="14" Minimum="0"
-                                 Maximum="{Binding ShoeTotal}" Value="{Binding ShoeRemaining}"
-                                 Foreground="#ffe08a" Background="#33ffffff" />
-                    <Rectangle Canvas.Left="{Binding ReshuffleMarkerLeft}" Width="2" Height="14" Fill="White" />
-                </Canvas>
+    <!-- The table, with the flight layer for dealt cards on top. -->
+    <Panel>
+        <!-- Two columns: betting at the left (bet area, chips, Clear, Deal), the table in the middle (hands, play buttons).
+             The chip row and the play buttons share one row, so all buttons are on one line. -->
+        <Grid Margin="20" ColumnDefinitions="Auto,*" RowDefinitions="Auto,*,Auto,Auto">
+            <!-- Header from the left: bankroll, shoe level, decks and Leave table; the shoe itself is at the top right. -->
+            <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="{Binding BankrollText}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" MinWidth="230" />
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,30,0"
+                            ToolTip.Tip="Cards left in the shoe; the white mark shows where it is reshuffled.">
+                    <TextBlock Text="{Binding ShoeText}" FontSize="16" VerticalAlignment="Center" MinWidth="120" />
+                    <!-- Bar width must match TableViewModel.ShoeBarWidth. -->
+                    <Canvas Width="200" Height="14" VerticalAlignment="Center">
+                        <ProgressBar Width="200" MinWidth="200" Height="14" MinHeight="14" Minimum="0"
+                                     Maximum="{Binding ShoeTotal}" Value="{Binding ShoeRemaining}"
+                                     Foreground="#ffe08a" Background="#33ffffff" />
+                        <Rectangle Canvas.Left="{Binding ReshuffleMarkerLeft}" Width="2" Height="14" Fill="White" />
+                    </Canvas>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="Decks:" FontSize="16" VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding DeckOptions}" SelectedItem="{Binding Decks}"
+                              IsEnabled="{Binding CanChangeDecks}" MinWidth="70" VerticalAlignment="Center" />
+                    <Button Content="Leave table" Command="{Binding LeaveTableCommand}" Margin="20,0,0,0" />
+                </StackPanel>
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
-                <TextBlock Text="Decks:" FontSize="16" VerticalAlignment="Center" />
-                <ComboBox ItemsSource="{Binding DeckOptions}" SelectedItem="{Binding Decks}"
-                          IsEnabled="{Binding CanChangeDecks}" MinWidth="70" VerticalAlignment="Center" />
-                <Button Content="Leave table" Command="{Binding LeaveTableCommand}" Margin="20,0,0,0" />
+
+            <!-- Left column, bet area: one row per chip value; clicking a stack takes one chip back. -->
+            <Border Grid.Row="1" Classes="betarea" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="22">
+                    <!-- Fixed height for four stacks (83 px each), so the area does not jump. -->
+                    <Panel Height="362">
+                        <TextBlock Text="Click the chips below to bet" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !BetStacks.Count}" />
+                        <ItemsControl ItemsSource="{Binding BetStacks}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="10" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChipStackViewModel">
+                                    <Button Classes="stack" ToolTip.Tip="Click to take a chip back"
+                                            Command="{Binding $parent[Window].((vm:TableViewModel)DataContext).RemoveChipCommand}"
+                                            CommandParameter="{Binding Chip.Value}">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <ItemsControl ItemsSource="{Binding Layers}" Width="48" Height="83">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Panel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:ChipLayer">
+                                                        <ContentControl Content="{Binding Chip}" ContentTemplate="{StaticResource ChipTemplate}"
+                                                                        Width="48" Height="48" VerticalAlignment="Bottom"
+                                                                        Margin="{Binding Lift, Converter={StaticResource LiftMargin}}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Text="{Binding CountText}" VerticalAlignment="Bottom" MinWidth="34" Margin="0,0,0,14" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Panel>
+                    <TextBlock Text="{Binding BetText}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- Middle: dealer at the top, player hands below, then the result of the last round. -->
+            <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="20,0,0,0">
+                <ContentControl Content="{Binding Dealer}" ContentTemplate="{StaticResource HandTemplate}"
+                                HorizontalAlignment="Center" />
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding PlayerHands}" ItemTemplate="{StaticResource HandTemplate}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <TextBlock Grid.Row="2" Text="{Binding LastResult}" FontSize="22" FontWeight="Bold" Foreground="#ffe08a"
+                           HorizontalAlignment="Center" Margin="0,8,0,0" />
+            </Grid>
+
+            <!-- Bet buttons at the left: chip tray (a click puts the chip into the bet area) and Clear. -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,12,0,0">
+                <ItemsControl ItemsSource="{Binding ChipTray}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChipViewModel">
+                            <Button Classes="chip" Content="{Binding}" ContentTemplate="{StaticResource ChipTemplate}"
+                                    Command="{Binding $parent[Window].((vm:TableViewModel)DataContext).AddChipCommand}"
+                                    CommandParameter="{Binding Value}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="Clear" Command="{Binding ClearBetCommand}" VerticalAlignment="Center" Margin="6,0,0,0" />
             </StackPanel>
+
+            <!-- Play buttons in the middle, below the hands; Deal at the right, set apart and highlighted. -->
+            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" Margin="20,12,0,0">
+                <Button Content="Hit" Command="{Binding HitCommand}" />
+                <Button Content="Stand" Command="{Binding StandCommand}" />
+                <Button Content="Double" Command="{Binding DoubleCommand}" />
+                <Button Content="Split" Command="{Binding SplitCommand}" />
+                <Button Content="New game" Command="{Binding NewGameCommand}" IsVisible="{Binding IsSessionOver}" />
+                <Button Classes="deal" Content="Deal" Command="{Binding DealCommand}" IsDefault="True" Margin="30,0,0,0" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Status}" HorizontalAlignment="Center" TextWrapping="Wrap"
+                       TextAlignment="Center" Margin="20,12,0,0" />
         </Grid>
-
-        <!-- Left column, bet area: one row per chip value; clicking a stack takes one chip back. -->
-        <Border Grid.Row="1" Classes="betarea" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <StackPanel Spacing="22">
-                <!-- Fixed height for four stacks (83 px each), so the area does not jump. -->
-                <Panel Height="362">
-                    <TextBlock Text="Click the chips below to bet" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !BetStacks.Count}" />
-                    <ItemsControl ItemsSource="{Binding BetStacks}" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Spacing="10" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:ChipStackViewModel">
-                                <Button Classes="stack" ToolTip.Tip="Click to take a chip back"
-                                        Command="{Binding $parent[Window].((vm:TableViewModel)DataContext).RemoveChipCommand}"
-                                        CommandParameter="{Binding Chip.Value}">
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <ItemsControl ItemsSource="{Binding Layers}" Width="48" Height="83">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <Panel />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="vm:ChipLayer">
-                                                    <ContentControl Content="{Binding Chip}" ContentTemplate="{StaticResource ChipTemplate}"
-                                                                    Width="48" Height="48" VerticalAlignment="Bottom"
-                                                                    Margin="{Binding Lift, Converter={StaticResource LiftMargin}}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding CountText}" VerticalAlignment="Bottom" MinWidth="34" Margin="0,0,0,14" />
-                                    </StackPanel>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Panel>
-                <TextBlock Text="{Binding BetText}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
-            </StackPanel>
-        </Border>
-
-        <!-- Middle: dealer at the top, player hands below, then the result of the last round. -->
-        <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="20,0,0,0">
-            <ContentControl Content="{Binding Dealer}" ContentTemplate="{StaticResource HandTemplate}"
-                            HorizontalAlignment="Center" />
-            <ItemsControl Grid.Row="1" ItemsSource="{Binding PlayerHands}" ItemTemplate="{StaticResource HandTemplate}"
-                          HorizontalAlignment="Center" VerticalAlignment="Center">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-            <TextBlock Grid.Row="2" Text="{Binding LastResult}" FontSize="22" FontWeight="Bold" Foreground="#ffe08a"
-                       HorizontalAlignment="Center" Margin="0,8,0,0" />
-        </Grid>
-
-        <!-- Bet buttons at the left: chip tray (a click puts the chip into the bet area) and Clear. -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,12,0,0">
-            <ItemsControl ItemsSource="{Binding ChipTray}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="6" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ChipViewModel">
-                        <Button Classes="chip" Content="{Binding}" ContentTemplate="{StaticResource ChipTemplate}"
-                                Command="{Binding $parent[Window].((vm:TableViewModel)DataContext).AddChipCommand}"
-                                CommandParameter="{Binding Value}" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button Content="Clear" Command="{Binding ClearBetCommand}" VerticalAlignment="Center" Margin="6,0,0,0" />
-        </StackPanel>
-
-        <!-- Play buttons in the middle, below the hands; Deal at the right, set apart and highlighted. -->
-        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
-                    VerticalAlignment="Center" Margin="20,12,0,0">
-            <Button Content="Hit" Command="{Binding HitCommand}" />
-            <Button Content="Stand" Command="{Binding StandCommand}" />
-            <Button Content="Double" Command="{Binding DoubleCommand}" />
-            <Button Content="Split" Command="{Binding SplitCommand}" />
-            <Button Content="New game" Command="{Binding NewGameCommand}" IsVisible="{Binding IsSessionOver}" />
-            <Button Classes="deal" Content="Deal" Command="{Binding DealCommand}" IsDefault="True" Margin="30,0,0,0" />
-        </StackPanel>
-
-        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Status}" HorizontalAlignment="Center" TextWrapping="Wrap"
-                   TextAlignment="Center" Margin="20,12,0,0" />
-    </Grid>
+        <!-- The shoe in the top right corner: the next card lies at 45° under a metal plate (a triangle with a finger
+             notch), so dealt cards are pulled out from under the plate. Card below the flight layer, plate above it.
+             MainWindow.DealAsync starts each card at ShoeMouth (the centre of this card) with its scale and angle. -->
+        <Canvas Width="230" Height="230" HorizontalAlignment="Right" VerticalAlignment="Top" ClipToBounds="True"
+                IsHitTestVisible="False">
+            <Border Classes="card" Canvas.Left="138.2" Canvas.Top="-92.2" RenderTransformOrigin="50%,50%"
+                    RenderTransform="rotate(-45deg)">
+                <Border ClipToBounds="True" CornerRadius="7">
+                    <Image Margin="-1" Stretch="Fill" Source="avares://BlackjackGui/Assets/Cards/card_back.png" />
+                </Border>
+            </Border>
+            <Border x:Name="ShoeMouth" Canvas.Left="213.2" Canvas.Top="16.8" Width="0" Height="0" />
+        </Canvas>
+        <Canvas x:Name="FlightLayer" IsHitTestVisible="False" />
+        <Canvas Width="230" Height="230" HorizontalAlignment="Right" VerticalAlignment="Top" ClipToBounds="True"
+                ToolTip.Tip="The shoe">
+            <!-- Shadow of the plate edge on the card. -->
+            <Path Data="M 130,0 L 230,0 L 230,100 L 199.1,69.1 A 27,27 0 0 0 160.9,30.9 Z" Fill="#55000000">
+                <Path.RenderTransform>
+                    <TranslateTransform X="-3" Y="3" />
+                </Path.RenderTransform>
+            </Path>
+            <Path Data="M 130,0 L 230,0 L 230,100 L 199.1,69.1 A 27,27 0 0 0 160.9,30.9 Z" Stroke="#7d8186" StrokeThickness="1.5">
+                <Path.Fill>
+                    <LinearGradientBrush StartPoint="100%,0%" EndPoint="35%,65%">
+                        <GradientStop Offset="0" Color="#7c8085" />
+                        <GradientStop Offset="0.45" Color="#c4c8cc" />
+                        <GradientStop Offset="0.85" Color="#eef0f2" />
+                        <GradientStop Offset="1" Color="#d6d9dc" />
+                    </LinearGradientBrush>
+                </Path.Fill>
+            </Path>
+        </Canvas>
+    </Panel>
 </Window>
