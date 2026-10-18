@@ -647,6 +647,17 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - This replaces the slide-in animation of M5.
 - Tests (ViewModel, with a recording animator): every dealt card is passed to the animator in deal order and hidden until its animation ends; the total is updated afterwards; the engine waits for an unfinished animation; the hole card is passed face down and turned over on reveal, its value set during the turn; without an animator nothing changes.
 
+### E7 – Table print (GUI)
+
+- Between the dealer and the player hands the felt shows a print as on a casino table (after the example `misc/graphics table.png`), on arcs around the dealer and behind the cards (cards may cover it; the layout does not change):
+  1. `BLACKJACK PAYS 3 TO 2` in large letters,
+  2. `Dealer Must Stand on Soft 17` in smaller letters,
+  3. a banner (curved band with folded ends, gold outline) with `Insurance Pays 2 to 1` in small capitals.
+- Texts 1 and 2 follow the rules: the payout as the smallest fraction (1.5 → `3 TO 2`, 1.2 → `6 TO 5`), `Must Hit` for H17. Text 3 is fixed: Insurance is a planned feature (still in section 9 for now); the print is shown already.
+- The player hands sit at the bottom of the table area (above the buttons), so the print stays visible between them and the dealer; split hands that wrap into a second row may cover it.
+- Serif font, cream colour, slightly transparent; drawn by a control of the GUI (letters placed one by one along the arc; no package).
+- Tests (ViewModel): texts for 3:2 and 6:5, S17 and H17.
+
 ## 9. Non-goals (not part of any current milestone)
 
 - Insurance, Surrender, Even Money

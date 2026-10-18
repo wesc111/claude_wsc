@@ -131,6 +131,15 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>The bankroll as text, e.g. <c>Bankroll: 1000</c>.</summary>
     public string BankrollText => $"Bankroll: {DisplayText.Money(Bankroll)}";
 
+    /// <summary>The first line of the table print, e.g. <c>BLACKJACK PAYS 3 TO 2</c>.</summary>
+    public string PayoutPrint => DisplayText.PayoutPrint(_rules.BlackjackPayout);
+
+    /// <summary>The second line of the table print, e.g. <c>Dealer Must Stand on Soft 17</c>.</summary>
+    public string DealerRulePrint => DisplayText.DealerRulePrint(_rules.DealerHitsSoft17);
+
+    /// <summary>The banner of the table print.</summary>
+    public string InsurancePrint => DisplayText.InsurancePrint;
+
     /// <summary>The chips of the tray, one per value, ascending.</summary>
     public IReadOnlyList<ChipViewModel> ChipTray { get; } = [.. ChipViewModel.Values.Select(v => new ChipViewModel(v))];
 

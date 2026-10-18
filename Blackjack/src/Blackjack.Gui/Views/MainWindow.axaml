@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Blackjack.Gui.ViewModels"
+        xmlns:views="using:Blackjack.Gui.Views"
         x:Class="Blackjack.Gui.Views.MainWindow"
         x:DataType="vm:TableViewModel"
         Title="Blackjack"
@@ -233,12 +234,18 @@
                 </StackPanel>
             </Border>
 
-            <!-- Middle: dealer at the top, player hands below, then the result of the last round. -->
+            <!-- Middle: dealer at the top, the table print, player hands at the bottom, then the result of the last round. -->
             <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="20,0,0,0">
+                <!-- The print on the felt (spec E7), behind the cards, in the gap between the dealer's hand and the player
+                     hands; its ends rise beside the dealer's cards. -->
+                <views:TablePrint Grid.Row="1" Width="740" Height="120" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                  Margin="0,-50,0,0"
+                                  IsHitTestVisible="False" PayoutText="{Binding PayoutPrint}" RuleText="{Binding DealerRulePrint}"
+                                  BannerText="{Binding InsurancePrint}" />
                 <ContentControl Content="{Binding Dealer}" ContentTemplate="{StaticResource HandTemplate}"
                                 HorizontalAlignment="Center" />
                 <ItemsControl Grid.Row="1" ItemsSource="{Binding PlayerHands}" ItemTemplate="{StaticResource HandTemplate}"
-                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                              HorizontalAlignment="Center" VerticalAlignment="Bottom">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal" />
