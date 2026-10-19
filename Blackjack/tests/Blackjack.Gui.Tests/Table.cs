@@ -1,3 +1,4 @@
+using Blackjack.Gui.Settings;
 using Blackjack.Gui.ViewModels;
 using Blackjack.Reports;
 
@@ -12,9 +13,16 @@ public sealed class Table
     private readonly Queue<FixedCardSource> _sources;
 
     public Table(decimal bankroll = 1000m, params string[] shoes)
+        : this(Rules.Default, bankroll, null, shoes)
+    {
+    }
+
+    /// <summary>A table with the given rules, starting bankroll and saved bankroll (spec E9).</summary>
+    public Table(Rules rules, decimal startingBankroll, decimal? savedBankroll, params string[] shoes)
     {
         _sources = new Queue<FixedCardSource>(shoes.Select(s => new FixedCardSource(s)));
-        ViewModel = new TableViewModel(Rules.Default, NextSource, bankroll, TimeSpan.Zero, SaveLog);
+        ViewModel = new TableViewModel(rules, NextSource, startingBankroll, TimeSpan.Zero, SaveLog,
+                                       bankroll: savedBankroll, saveSettings: SavedSettings.Add);
     }
 
     public Table(Func<Rules, ICardSource> factory)
@@ -28,6 +36,9 @@ public sealed class Table
     public FixedCardSource? LastSource { get; private set; }
 
     public List<Rules> UsedRules { get; } = [];
+
+    /// <summary>The settings passed to the save function, in order.</summary>
+    public List<GameSettings> SavedSettings { get; } = [];
 
     /// <summary>The logs passed to the save function, in order.</summary>
     public List<SessionLog> SavedLogs { get; } = [];

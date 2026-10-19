@@ -1,7 +1,10 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Blackjack.Reports;
+using Blackjack.Gui.Settings;
 using Blackjack.Gui.Sounds;
 using Blackjack.Gui.ViewModels;
 using Blackjack.Gui.Views;
@@ -22,15 +25,28 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var rules = Rules.Default;
+            var store = new SettingsStore(SettingsStore.DefaultPath);
+            var settings = store.Load();
             var table = new TableViewModel(
-                rules, r => new Shoe(r), startingBankroll: 1000m, DealDelay,
-                saveLog: log => SessionLogFiles.DisplayPath(SessionLogFiles.Save(log, SessionLogFiles.DefaultDirectory)));
+                settings.ToRules(Rules.Default), r => new Shoe(r), settings.StartingBankroll, DealDelay,
+                saveLog: log => SessionLogFiles.DisplayPath(SessionLogFiles.Save(log, SessionLogFiles.DefaultDirectory)),
+                bankroll: settings.Bankroll, saveSettings: s => store.Save(s))
+            {
+                IsSoundOn = settings.IsSoundOn,
+            };
             var window = new MainWindow { DataContext = table };
             table.CardAnimator = window;
             table.SoundPlayer = OperatingSystem.IsMacOS() ? new AfplaySoundPlayer() : null;
             window.Closing += (_, _) => table.Shutdown();
             desktop.MainWindow = window;
+
+            // "Settings… ⌘," in the application menu (macOS); elsewhere the header button only.
+            var settingsItem = new NativeMenuItem("Settings…") { Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Meta) };
+            settingsItem.Click += async (_, _) => await window.OpenSettingsAsync();
+            var menu = new NativeMenu();
+            menu.Items.Add(settingsItem);
+            NativeMenu.SetMenu(this, menu);
+
             table.Start();
         }
 

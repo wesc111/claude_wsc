@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Blackjack.Gui.ViewModels;
@@ -24,11 +25,44 @@ public sealed partial class MainWindow : Window, ICardAnimator
     // A card dealt face up turns over during the last part of the flight.
     private const double TurnStart = 0.55;
 
+    private bool _settingsOpen;
+
     /// <summary>Creates the window.</summary>
     public MainWindow()
     {
         InitializeComponent();
     }
+
+    /// <summary>
+    /// Shows the settings dialog (spec E9) and applies it on OK; only between rounds (the header button and the app
+    /// menu item ⌘, both end here).
+    /// </summary>
+    public async Task OpenSettingsAsync()
+    {
+        if (_settingsOpen || DataContext is not TableViewModel table || !table.IsBetweenRounds)
+        {
+            return;
+        }
+
+        _settingsOpen = true;
+        try
+        {
+            var dialog = new SettingsWindow
+            {
+                DataContext = new SettingsViewModel(table.CurrentSettings, table.Bankroll, table.CanChangeDecks),
+            };
+            if (await dialog.ShowDialog<SettingsChange?>(this) is { } change)
+            {
+                table.ApplySettings(change.Settings, change.ResetBankroll);
+            }
+        }
+        finally
+        {
+            _settingsOpen = false;
+        }
+    }
+
+    private async void OnSettingsClick(object? sender, RoutedEventArgs e) => await OpenSettingsAsync();
 
     /// <inheritdoc />
     public async Task DealAsync(CardViewModel card, CancellationToken ct)

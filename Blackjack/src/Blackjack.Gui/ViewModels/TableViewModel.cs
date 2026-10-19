@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Blackjack.Gui.Settings;
 using Blackjack.Reports;
 
 namespace Blackjack.Gui.ViewModels;
@@ -13,17 +14,25 @@ namespace Blackjack.Gui.ViewModels;
 /// </summary>
 public sealed class TableViewModel : ObservableObject, IGameObserver
 {
-    private readonly Rules _rules;
     private readonly Func<Rules, ICardSource> _cardSourceFactory;
-    private readonly decimal _startingBankroll;
     private readonly TimeSpan _dealDelay;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly IRelayCommand[] _commands;
+    private readonly Action<GameSettings>? _saveSettings;
+
+    // The rules of the running game, and those chosen for the next one (deck selector, settings dialog).
+    private Rules _rules;
+    private Rules _nextRules;
+    private decimal _startingBankroll;
+
+    // The bankroll a new game starts with and the one saved: the bankroll after the last round, or the starting
+    // bankroll after Game over and Reset bankroll (spec E9).
+    private decimal _nextBankroll;
 
     private BlackjackGame _game;
     private ICardSource _cardSource = null!;
-    private int _decks;
     private bool _restartRequested;
+    private string _notice = "";
     private int _shoeRemaining;
     private int _shoeTotal;
     private readonly Func<SessionLog, string>? _saveLog;
@@ -44,25 +53,28 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>Creates the table; call <see cref="Start"/> to begin playing.</summary>
     /// <param name="rules">The table rules.</param>
     /// <param name="cardSourceFactory">Creates the shoe for each new game from the rules (with the selected number of decks).</param>
-    /// <param name="startingBankroll">The bankroll of each new game.</param>
+    /// <param name="startingBankroll">The bankroll of a new game after Game over or Reset bankroll.</param>
     /// <param name="dealDelay">Pause after each card without <see cref="CardAnimator"/> and after a split; <see cref="TimeSpan.Zero"/> in tests.</param>
     /// <param name="saveLog">Saves the statistics files at the end of a session and returns the path to show; <c>null</c> = no files.</param>
     /// <param name="clock">The time source of the log; the local time by default.</param>
+    /// <param name="bankroll">The saved bankroll to continue with; <c>null</c> or below the minimum bet = the starting bankroll.</param>
+    /// <param name="saveSettings">Saves the settings whenever they or the bankroll change; <c>null</c> = not saved.</param>
     public TableViewModel(Rules rules, Func<Rules, ICardSource> cardSourceFactory, decimal startingBankroll, TimeSpan dealDelay,
-                          Func<SessionLog, string>? saveLog = null, Func<DateTimeOffset>? clock = null)
+                          Func<SessionLog, string>? saveLog = null, Func<DateTimeOffset>? clock = null,
+                          decimal? bankroll = null, Action<GameSettings>? saveSettings = null)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(cardSourceFactory);
-        _rules = rules;
+        _rules = _nextRules = rules;
         _cardSourceFactory = cardSourceFactory;
         _startingBankroll = startingBankroll;
+        _nextBankroll = bankroll is { } saved && saved >= rules.MinBet ? saved : startingBankroll;
         _dealDelay = dealDelay;
-        _decks = rules.Decks;
         _saveLog = saveLog;
         _clock = clock;
+        _saveSettings = saveSettings;
         _game = NewGame();
         _log = NewLog();
-        _bankroll = startingBankroll;
 
         Player.BetRequested += OnBetRequested;
         Player.DecisionRequested += OnDecisionRequested;
@@ -92,12 +104,24 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>Plays the sounds of the table (spec E8); <c>null</c> = silent.</summary>
     public ISoundPlayer? SoundPlayer { get; set; }
 
-    /// <summary>Whether sounds are played; the "Sound" switch in the header.</summary>
+    /// <summary>Whether sounds are played; the "Sound" switch in the header (saved).</summary>
     public bool IsSoundOn
     {
         get => _isSoundOn;
-        set => SetProperty(ref _isSoundOn, value);
+        set
+        {
+            if (SetProperty(ref _isSoundOn, value))
+            {
+                SaveSettings();
+            }
+        }
     }
+
+    /// <summary>The settings to save: the rules for the next game, the bankrolls and the Sound switch.</summary>
+    public GameSettings CurrentSettings => GameSettings.From(_nextRules, _startingBankroll, _nextBankroll, IsSoundOn);
+
+    /// <summary>Whether the table waits between rounds, so the settings can be opened and the bankroll reset.</summary>
+    public bool IsBetweenRounds => Phase == TablePhase.Betting || IsSessionOver;
 
     /// <summary>The player's hands (more than one after a split).</summary>
     public ObservableCollection<HandViewModel> PlayerHands { get; } = [];
@@ -117,6 +141,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             if (SetProperty(ref _phase, value))
             {
                 OnPropertyChanged(nameof(IsSessionOver));
+                OnPropertyChanged(nameof(IsBetweenRounds));
                 OnPropertyChanged(nameof(CanChangeDecks));
                 RefreshCommands();
             }
@@ -200,28 +225,79 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// </summary>
     public int Decks
     {
-        get => _decks;
+        get => _nextRules.Decks;
         set
         {
-            if (value == _decks || !CanChangeDecks || value < Rules.MinDecks || value > Rules.MaxDecks)
+            if (value == Decks || !CanChangeDecks || value < Rules.MinDecks || value > Rules.MaxDecks)
             {
                 OnPropertyChanged();
                 return;
             }
 
-            _decks = value;
-            OnPropertyChanged();
-            if (Phase == TablePhase.Betting)
-            {
-                // The loop is waiting for the first bet: end that request and start again with a new shoe.
-                _restartRequested = true;
-                Player.LeaveTable();
-            }
+            ChangeRules(_nextRules with { Decks = value });
+            SaveSettings();
         }
     }
 
-    /// <summary>Whether <see cref="Decks"/> can be changed now.</summary>
+    /// <summary>Whether <see cref="Decks"/> can be changed now; changed table rules then apply at once (or to New game).</summary>
     public bool CanChangeDecks => IsSessionOver || (Phase == TablePhase.Betting && _log.Statistics.Rounds == 0);
+
+    /// <summary>
+    /// Applies the settings dialog (spec E9). Sound and starting bankroll apply at once. Changed table rules apply at
+    /// once before the first round of a game, otherwise to the next game. <paramref name="resetBankroll"/> starts a new
+    /// game with the starting bankroll (ending the session if rounds were played); only between rounds.
+    /// </summary>
+    public void ApplySettings(GameSettings settings, bool resetBankroll)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        _isSoundOn = settings.IsSoundOn;
+        OnPropertyChanged(nameof(IsSoundOn));
+        _startingBankroll = settings.StartingBankroll;
+        var rules = settings.ToRules(_nextRules);
+        if (resetBankroll && IsBetweenRounds)
+        {
+            _nextRules = rules;
+            OnPropertyChanged(nameof(Decks));
+            ResetBankroll();
+        }
+        else if (rules != _nextRules)
+        {
+            ChangeRules(rules);
+        }
+
+        SaveSettings();
+    }
+
+    // Before the first round the loop waits for the first bet: end that request and start again with the new rules.
+    private void ChangeRules(Rules rules)
+    {
+        _nextRules = rules;
+        OnPropertyChanged(nameof(Decks));
+        if (Phase == TablePhase.Betting && _log.Statistics.Rounds == 0)
+        {
+            RequestRestart();
+        }
+    }
+
+    private void ResetBankroll()
+    {
+        _nextBankroll = _startingBankroll;
+        _notice = "Bankroll reset.";
+        if (Phase == TablePhase.Betting)
+        {
+            RequestRestart();
+        }
+        else
+        {
+            _newGame?.TrySetResult();
+        }
+    }
+
+    private void RequestRestart()
+    {
+        _restartRequested = true;
+        Player.LeaveTable();
+    }
 
     /// <summary>Cards left in the shoe.</summary>
     public int ShoeRemaining
@@ -428,6 +504,8 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         if (result.Bankroll is { } bankroll)
         {
             Bankroll = bankroll;
+            _nextBankroll = bankroll;
+            SaveSettings();
         }
 
         if (ResultSound(result) is { } sound)
@@ -449,15 +527,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
                 RefreshCommands();
                 await _newGame.Task.WaitAsync(ct);
                 _newGame = null;
-                _game = NewGame();
-                _log = NewLog();
-                OnPropertyChanged(nameof(CanChangeDecks));
-                _lastBet = null;
-                Bankroll = _startingBankroll;
-                Dealer.Cards.Clear();
-                Dealer.UpdateTotal();
-                PlayerHands.Clear();
-                LastResult = "";
+                StartNewGame();
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -477,6 +547,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         {
             if (_game.Bankroll < _rules.MinBet)
             {
+                // New game starts with the starting bankroll, also after the next start of the program.
+                _nextBankroll = _startingBankroll;
+                SaveSettings();
                 Status = $"Your bankroll is below the minimum bet. {Summary()}{SaveLog()} Press New game to play again.";
                 Phase = TablePhase.GameOver;
                 return;
@@ -485,10 +558,14 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             var result = await _game.PlayRoundAsync(Player, ct);
             if (result is null && _restartRequested)
             {
-                // The number of decks was changed before the first round.
+                // The rules were changed before the first round, or the bankroll was reset: this session ends.
                 _restartRequested = false;
-                _game = NewGame();
-                _log = NewLog();
+                if (_log.Rounds.Count > 0)
+                {
+                    _notice = $"{_notice} {Summary()}{SaveLog()}";
+                }
+
+                StartNewGame();
                 continue;
             }
 
@@ -508,19 +585,39 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         $"Rounds: {_log.Statistics.Rounds}, wins: {_log.Statistics.Wins}, losses: {_log.Statistics.Losses}, " +
         $"pushes: {_log.Statistics.Pushes}, net: {DisplayText.SignedMoney(_log.Statistics.Net)}.";
 
+    // A new game with the rules and bankroll chosen for it, and a cleared table.
+    private void StartNewGame()
+    {
+        _game = NewGame();
+        _log = NewLog();
+        OnPropertyChanged(nameof(CanChangeDecks));
+        _lastBet = null;
+        Dealer.Cards.Clear();
+        Dealer.UpdateTotal();
+        PlayerHands.Clear();
+        LastResult = "";
+        SaveSettings();
+    }
+
     private BlackjackGame NewGame()
     {
-        var rules = _rules with { Decks = _decks };
-        _cardSource = _cardSourceFactory(rules);
+        _rules = _nextRules;
+        OnPropertyChanged(nameof(PayoutPrint));
+        OnPropertyChanged(nameof(DealerRulePrint));
+        OnPropertyChanged(nameof(ReshuffleMarkerLeft));
+        _cardSource = _cardSourceFactory(_rules);
         UpdateShoe();
-        return new BlackjackGame(rules, _cardSource, _startingBankroll, [this]);
+        Bankroll = _nextBankroll;
+        return new BlackjackGame(_rules, _cardSource, _nextBankroll, [this]);
     }
 
     private SessionLog NewLog()
     {
         _logSaved = false;
-        return new SessionLog(_rules with { Decks = _decks }, _startingBankroll, _clock);
+        return new SessionLog(_rules, _nextBankroll, _clock);
     }
+
+    private void SaveSettings() => _saveSettings?.Invoke(CurrentSettings);
 
     // Saves the statistics files once per session (only with rounds); returns the text for the status line.
     private string SaveLog()
@@ -551,9 +648,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     {
         var max = context.MaxAllowedBet;
         SetChips(ChipViewModel.Split(Math.Clamp(_lastBet ?? _rules.MinBet, _rules.MinBet, max)));
+        var notice = _notice.Length > 0 ? _notice.Trim() + " " : "";
+        _notice = "";
         var shuffled = _shuffled ? "The shoe has been shuffled. " : "";
         _shuffled = false;
-        Status = $"{shuffled}Place your bet ({DisplayText.Money(_rules.MinBet)}–{DisplayText.Money(max)}) and press Deal.";
+        Status = $"{notice}{shuffled}Place your bet ({DisplayText.Money(_rules.MinBet)}–{DisplayText.Money(max)}) and press Deal.";
         Phase = TablePhase.Betting;
         RefreshCommands();
     }

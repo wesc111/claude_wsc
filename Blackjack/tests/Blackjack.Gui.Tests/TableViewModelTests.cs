@@ -197,7 +197,7 @@ public sealed class TableViewModelTests
     }
 
     [Fact]
-    public void LeaveTableShowsTheSummaryAndNewGameStartsOver()
+    public void LeaveTableShowsTheSummaryAndNewGameContinuesTheBankroll()
     {
         var t = new Table(1000m, "10 9 9 8", "10 9 7 8");
         var vm = t.ViewModel;
@@ -215,7 +215,7 @@ public sealed class TableViewModelTests
         t.Execute(vm.NewGameCommand);
 
         Assert.Equal(TablePhase.Betting, vm.Phase);
-        Assert.Equal(1000m, vm.Bankroll);
+        Assert.Equal(1010m, vm.Bankroll);
         Assert.Equal(0, vm.Statistics.Rounds);
         Assert.Equal(10m, vm.Bet);
         Assert.Empty(vm.PlayerHands);

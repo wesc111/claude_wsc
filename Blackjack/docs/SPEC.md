@@ -677,15 +677,44 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 
   One result sound per round, from the net over all hands. The default bet placed at the start of a round makes no sound.
 - The view model knows only `ISoundPlayer.Play(Sound)` (`Sound` = the events above). On macOS the GUI plays the files with `afplay` (one process per sound, not awaited, sounds may overlap; no NuGet package); the files are extracted from the resources into a temporary directory on first use. On other platforms the GUI is silent.
-- A "Sound" switch in the header (on at start, not saved yet) turns all sounds off.
+- A "Sound" switch in the header (on at the first start; saved since E9) turns all sounds off.
 - Tests (ViewModel, with a recording sound player): sounds of a round in order, chips, Clear, shuffle, the result sounds for win, Blackjack, loss and push, nothing when switched off; every variant file exists.
+
+### E9 – Saved settings (GUI)
+
+- The GUI keeps its settings in `settings.json` (System.Text.Json, no package) in the folder `Blackjack` of the local application data: `~/Library/Application Support/Blackjack` on macOS, `~/.local/share/Blackjack` on Linux, `%LOCALAPPDATA%\Blackjack` on Windows. The code is part of the GUI (`Settings/`); Core stays free of file I/O.
+- Saved values and their choices (the dialog offers only these, so every combination is valid for the engine):
+
+  | Setting | Choices | Default |
+  |---|---|---|
+  | Decks | 1–8 (also the selector in the header) | 6 |
+  | Dealer | stands on soft 17 (S17) / hits soft 17 (H17) | S17 |
+  | Blackjack pays | 3:2 / 6:5 | 3:2 |
+  | Reshuffle after (penetration) | 50 / 67 / 75 / 80 % of the shoe | 75 % |
+  | Minimum bet | 5 / 10 / 25 | 10 |
+  | Maximum bet | 100 / 250 / 500 / 1000 | 500 |
+  | Double after split, Re-split Aces | on / off | on / off |
+  | Starting bankroll | 500 / 1000 / 2000 / 5000 | 1000 |
+  | Bankroll | the bankroll to continue with | the starting bankroll |
+  | Sound | on / off (the switch in the header) | on |
+
+  Other rules (peek, split hands) keep their defaults. The speed of the animations is fixed.
+- Loading: a missing or unreadable file gives the defaults; a single value that is not offered falls back to its default. Saving writes a temporary file and replaces the old one; if saving fails, the game goes on without a message.
+- Saved when something changes: after every completed round (bankroll), at Game over, at the start of a new game, and when the deck selector, the Sound switch or the dialog changes a setting.
+- Bankroll: the program starts with the saved bankroll; a saved bankroll below the minimum bet is replaced by the starting bankroll. "Leave table" followed by "New game" continues with the bankroll (before E9 it started over). After Game over, "New game" starts with the starting bankroll, which is saved at once. Each start of the program is its own session in the statistics files of E2.
+- Settings dialog: a "Settings…" button in the header and, on macOS, "Settings… ⌘," in the application menu; both are available only between rounds (betting, Game over, after Leave table). Groups Table, Player (starting bankroll, current bankroll, "Reset bankroll") and Options (Sound); OK applies, Cancel discards.
+  - Sound and starting bankroll apply at once.
+  - Changed table rules apply at once before the first round of a game (a new shoe, like the deck selector of E1), otherwise to the next game. The dialog says which.
+  - "Reset bankroll" applies the settings and starts a new game with the starting bankroll at once. If rounds were played, the session ends first (statistics files written); the status line starts with "Bankroll reset." and the summary.
+- The table print (E7), the shoe display (E1) and the statistics files (E2) follow the rules of the running game.
+- Tests: settings file (save and load, missing, unreadable, values not offered, failed save), the default settings give the default rules, bankroll continued / below the minimum / saved after each round / after Game over, Reset bankroll (after rounds, before the first round, after Game over), rules at once and for the next game, decks and Sound saved, the dialog view model (shown values, result keeps the bankroll).
 
 ## 9. Non-goals (not part of any current milestone)
 
 - Insurance, Surrender, Even Money
 - No-peek (ENHC) as an active option (only prepared via `Rules.DealerPeeks`)
 - Multiple players / seats at one table
-- Network play, persistence, user accounts, real money
+- Network play, user accounts, real money; no persistence beyond the settings file of E9
 - Card counting strategies (prepared via `IGameObserver`)
 
 ---

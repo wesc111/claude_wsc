@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Blackjack.Gui.ViewModels"
+        x:Class="Blackjack.Gui.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings"
+        SizeToContent="WidthAndHeight" CanResize="False" WindowStartupLocation="CenterOwner"
+        Background="#0f3d22">
+
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.heading">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#ffe08a" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="MaxWidth" Value="400" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="MinWidth" Value="230" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="MinWidth" Value="90" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <StackPanel Margin="28,24" Spacing="14">
+        <TextBlock Classes="heading" Text="Table" />
+        <Grid ColumnDefinitions="170,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+            <TextBlock Text="Decks" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding DeckOptions}" SelectedItem="{Binding Decks}" />
+            <TextBlock Grid.Row="1" Text="Dealer" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding DealerRuleOptions}" SelectedItem="{Binding DealerRule}" />
+            <TextBlock Grid.Row="2" Text="Blackjack pays" />
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding PayoutOptions}" SelectedItem="{Binding Payout}" />
+            <TextBlock Grid.Row="3" Text="Reshuffle after" />
+            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding PenetrationOptions}" SelectedItem="{Binding Penetration}" />
+            <TextBlock Grid.Row="4" Text="Minimum bet" />
+            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding MinBetOptions}" SelectedItem="{Binding MinBet}" />
+            <TextBlock Grid.Row="5" Text="Maximum bet" />
+            <ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding MaxBetOptions}" SelectedItem="{Binding MaxBet}" />
+            <CheckBox Grid.Row="6" Grid.ColumnSpan="2" Content="Double after split" IsChecked="{Binding DoubleAfterSplit}"
+                      Foreground="White" />
+            <CheckBox Grid.Row="7" Grid.ColumnSpan="2" Content="Re-split Aces" IsChecked="{Binding ResplitAces}"
+                      Foreground="White" />
+        </Grid>
+        <TextBlock Classes="note" Text="{Binding RulesNote}" />
+
+        <TextBlock Classes="heading" Text="Player" Margin="0,8,0,0" />
+        <Grid ColumnDefinitions="170,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+            <TextBlock Text="Starting bankroll" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding StartingBankrollOptions}" SelectedItem="{Binding StartingBankroll}" />
+            <TextBlock Grid.Row="1" Text="{Binding BankrollText}" />
+            <Button Grid.Row="1" Grid.Column="1" Content="Reset bankroll" Click="OnResetBankroll"
+                    ToolTip.Tip="Applies the settings and starts a new game with the starting bankroll." />
+        </Grid>
+        <TextBlock Classes="note" Text="The bankroll is kept between games; the starting bankroll is used after Reset bankroll and Game over." />
+
+        <TextBlock Classes="heading" Text="Options" Margin="0,8,0,0" />
+        <CheckBox Content="Sound" IsChecked="{Binding IsSoundOn}" Foreground="White" />
+
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" IsCancel="True" Click="OnCancel" />
+            <Button Content="OK" IsDefault="True" Click="OnOk" />
+        </StackPanel>
+    </StackPanel>
+</Window>
