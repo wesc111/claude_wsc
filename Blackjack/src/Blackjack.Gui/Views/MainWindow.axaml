@@ -46,6 +46,11 @@
             <Setter Property="MinWidth" Value="84" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
+        <!-- Buttons and the Sound switch take no keyboard focus, so Space and Enter reach the keyboard shortcuts
+             (spec E10) instead of clicking the button clicked last. -->
+        <Style Selector="Button, CheckBox">
+            <Setter Property="Focusable" Value="False" />
+        </Style>
         <!-- Chips in the tray and stacks in the bet area: the chip graphic is the whole button. -->
         <Style Selector="Button.chip, Button.stack">
             <Setter Property="MinWidth" Value="0" />
@@ -190,7 +195,7 @@
                     <Button Content="Settings…" Click="OnSettingsClick" IsEnabled="{Binding IsBetweenRounds}"
                             ToolTip.Tip="Table rules, bankroll and sound (⌘,)" />
                     <CheckBox Content="Sound" IsChecked="{Binding IsSoundOn}" Foreground="White" VerticalAlignment="Center"
-                              Margin="20,0,0,0" ToolTip.Tip="Sounds on or off" />
+                              Margin="20,0,0,0" ToolTip.Tip="Sounds on or off (M)" />
                 </StackPanel>
             </StackPanel>
 
@@ -209,7 +214,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ChipStackViewModel">
-                                    <Button Classes="stack" ToolTip.Tip="Click to take a chip back"
+                                    <Button Classes="stack" ToolTip.Tip="{Binding Chip.StackTip}"
                                             Command="{Binding $parent[Window].((vm:TableViewModel)DataContext).RemoveChipCommand}"
                                             CommandParameter="{Binding Chip.Value}">
                                         <StackPanel Orientation="Horizontal" Spacing="10">
@@ -270,24 +275,24 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ChipViewModel">
-                            <Button Classes="chip" Content="{Binding}" ContentTemplate="{StaticResource ChipTemplate}"
+                            <Button Classes="chip" Content="{Binding}" ContentTemplate="{StaticResource ChipTemplate}" ToolTip.Tip="{Binding TrayTip}"
                                     Command="{Binding $parent[Window].((vm:TableViewModel)DataContext).AddChipCommand}"
                                     CommandParameter="{Binding Value}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Content="Clear" Command="{Binding ClearBetCommand}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                <Button Content="Clear" Command="{Binding ClearBetCommand}" ToolTip.Tip="Clear (C)" VerticalAlignment="Center" Margin="6,0,0,0" />
             </StackPanel>
 
             <!-- Play buttons in the middle, below the hands; Deal at the right, set apart and highlighted. -->
             <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
                         VerticalAlignment="Center" Margin="20,12,0,0">
-                <Button Content="Hit" Command="{Binding HitCommand}" />
-                <Button Content="Stand" Command="{Binding StandCommand}" />
-                <Button Content="Double" Command="{Binding DoubleCommand}" />
-                <Button Content="Split" Command="{Binding SplitCommand}" />
-                <Button Content="New game" Command="{Binding NewGameCommand}" IsVisible="{Binding IsSessionOver}" />
-                <Button Classes="deal" Content="Deal" Command="{Binding DealCommand}" IsDefault="True" Margin="30,0,0,0" />
+                <Button Content="Hit" Command="{Binding HitCommand}" ToolTip.Tip="Hit (H)" />
+                <Button Content="Stand" Command="{Binding StandCommand}" ToolTip.Tip="Stand (S)" />
+                <Button Content="Double" Command="{Binding DoubleCommand}" ToolTip.Tip="Double (D)" />
+                <Button Content="Split" Command="{Binding SplitCommand}" ToolTip.Tip="Split (P)" />
+                <Button Content="New game" Command="{Binding NewGameCommand}" IsVisible="{Binding IsSessionOver}" ToolTip.Tip="New game (N)" />
+                <Button Classes="deal" Content="Deal" Command="{Binding DealCommand}" Margin="30,0,0,0" ToolTip.Tip="Deal (Enter or Space)" />
             </StackPanel>
 
             <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Status}" HorizontalAlignment="Center" TextWrapping="Wrap"

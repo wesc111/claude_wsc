@@ -89,6 +89,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         DoubleCommand = new RelayCommand(() => Choose(PlayerAction.Double), () => Player.CanChoose(PlayerAction.Double));
         SplitCommand = new RelayCommand(() => Choose(PlayerAction.Split), () => Player.CanChoose(PlayerAction.Split));
         NewGameCommand = new RelayCommand(() => _newGame?.TrySetResult(), () => IsSessionOver);
+        ToggleSoundCommand = new RelayCommand(() => IsSoundOn = !IsSoundOn);
         _commands = [AddChipCommand, RemoveChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, NewGameCommand];
     }
 
@@ -360,6 +361,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
     /// <summary>Starts a new game after Game over or Leave table.</summary>
     public IRelayCommand NewGameCommand { get; }
+
+    /// <summary>Turns the sounds on or off (key M, spec E10).</summary>
+    public IRelayCommand ToggleSoundCommand { get; }
 
     /// <summary>The running session loop (completed after <see cref="Shutdown"/>).</summary>
     public Task Session => _session ?? Task.CompletedTask;

@@ -709,6 +709,27 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - The table print (E7), the shoe display (E1) and the statistics files (E2) follow the rules of the running game.
 - Tests: settings file (save and load, missing, unreadable, values not offered, failed save), the default settings give the default rules, bankroll continued / below the minimum / saved after each round / after Game over, Reset bankroll (after rounds, before the first round, after Game over), rules at once and for the next game, decks and Sound saved, the dialog view model (shown values, result keeps the bankroll).
 
+### E10 – Keyboard shortcuts (GUI)
+
+- Keys of the main window:
+
+  | Key | Action |
+  |---|---|
+  | H / S / D / P | Hit / Stand / Double / Split |
+  | Enter or Space | Deal |
+  | 1 / 2 / 3 / 4 (also on the number pad) | put a chip 5 / 10 / 25 / 100 into the bet area |
+  | Shift + 1–4 | take a chip of that value back |
+  | C | Clear |
+  | N | New game |
+  | M | Sound on / off |
+  | ⌘, | Settings (E9) |
+
+- A key runs the command of its button under the same conditions; while the button is disabled, the key does nothing. Keys with other modifiers (Ctrl, Alt, ⌘) are no shortcuts, except ⌘,.
+- "Leave table" has no shortcut: leaving ends the shoe, which must not happen by accident (e.g. for a later count trainer).
+- Buttons and the Sound switch take no keyboard focus, so Space and Enter always reach the shortcuts instead of clicking the button clicked last; the Deal button is no longer the default button. The keys are handled before the controls of the window; an open deck list keeps its own keys. The settings dialog has none of these keys.
+- Tooltips name the keys, e.g. "Hit (H)", "Bet 25 (key 3)".
+- The mapping is a class of the GUI (`KeyboardShortcuts`), tested without UI: every key finds the command of its button, chips with and without Shift, other keys and modifiers are no shortcuts (also L), a round played with the keyboard, disabled commands do nothing, New game, Sound.
+
 ## 9. Non-goals (not part of any current milestone)
 
 - Insurance, Surrender, Even Money

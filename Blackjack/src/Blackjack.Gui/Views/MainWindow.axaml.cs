@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -31,6 +32,21 @@ public sealed partial class MainWindow : Window, ICardAnimator
     public MainWindow()
     {
         InitializeComponent();
+
+        // Tunnel, so the shortcuts come before any control (spec E10).
+        AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
+    {
+        // An open deck list keeps its own keys.
+        var comboBox = (e.Source as Visual)?.FindAncestorOfType<ComboBox>(includeSelf: true);
+        if (comboBox?.IsDropDownOpen == true || DataContext is not TableViewModel table)
+        {
+            return;
+        }
+
+        e.Handled = KeyboardShortcuts.Handle(table, e.Key, e.KeyModifiers);
     }
 
     /// <summary>

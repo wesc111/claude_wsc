@@ -20,6 +20,15 @@ public sealed record ChipViewModel(int Value)
     /// <summary>The value as text, e.g. <c>25</c>.</summary>
     public string Text => Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+    /// <summary>The tooltip in the tray with the key of the chip (spec E10), e.g. <c>Bet 25 (key 3)</c>.</summary>
+    public string TrayTip => $"Bet {Text} (key {Key})";
+
+    /// <summary>The tooltip of a stack in the bet area, e.g. <c>Click to take a chip back (Shift+3)</c>.</summary>
+    public string StackTip => $"Click to take a chip back (Shift+{Key})";
+
+    // Keys 1–4 stand for the chips in ascending order.
+    private int Key => Values.ToList().IndexOf(Value) + 1;
+
     /// <summary>
     /// Splits an amount into as few chips as possible, largest first (e.g. 35 = 25 + 10).
     /// A rest smaller than the smallest chip is dropped.
