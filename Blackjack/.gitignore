@@ -7,3 +7,5 @@ TestResults/
 .DS_Store
 log/
 dist/
+# Downloaded sound pack (spec E8); only the selected files in src/Blackjack.Gui/Assets/Sounds are committed.
+audio/

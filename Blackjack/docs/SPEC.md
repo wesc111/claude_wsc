@@ -658,6 +658,28 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Serif font, cream colour, slightly transparent; drawn by a control of the GUI (letters placed one by one along the arc; no package).
 - Tests (ViewModel): texts for 3:2 and 6:5, S17 and H17.
 
+### E8 – Sounds (GUI)
+
+- Sounds from Kenney "Casino Audio" (CC0, see `docs/SOUNDS.md`), as mono WAV files in `src/Blackjack.Gui/Assets/Sounds/`, embedded as resources. The downloaded pack (`audio/`) is not part of the repository.
+- Events and sounds (frequent events pick one of several variants at random):
+
+  | Event | Sound files |
+  |---|---|
+  | A card is pulled out of the shoe (start of the flight) | `card-slide-1…4` |
+  | The hole card turns over | `card-place-2`, `card-place-4` |
+  | The shoe is reshuffled (engine notification; a new shoe at the start of a game is shuffled silently) | `card-shuffle` |
+  | A chip is put into the bet area | `chip-lay-1…3` |
+  | A chip is taken back, or Clear with chips in the bet area | `chips-handle-3`, `chips-handle-4` |
+  | Round won (net > 0) | `chips-stack-1`, `chips-stack-3` |
+  | Round with a player Blackjack won | `chips-handle-5` |
+  | Round lost (net < 0) | `card-shove-1`, `card-shove-2` |
+  | Push (net = 0) | none |
+
+  One result sound per round, from the net over all hands. The default bet placed at the start of a round makes no sound.
+- The view model knows only `ISoundPlayer.Play(Sound)` (`Sound` = the events above). On macOS the GUI plays the files with `afplay` (one process per sound, not awaited, sounds may overlap; no NuGet package); the files are extracted from the resources into a temporary directory on first use. On other platforms the GUI is silent.
+- A "Sound" switch in the header (on at start, not saved yet) turns all sounds off.
+- Tests (ViewModel, with a recording sound player): sounds of a round in order, chips, Clear, shuffle, the result sounds for win, Blackjack, loss and push, nothing when switched off; every variant file exists.
+
 ## 9. Non-goals (not part of any current milestone)
 
 - Insurance, Surrender, Even Money

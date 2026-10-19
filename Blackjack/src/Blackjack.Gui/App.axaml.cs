@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Blackjack.Reports;
+using Blackjack.Gui.Sounds;
 using Blackjack.Gui.ViewModels;
 using Blackjack.Gui.Views;
 
@@ -27,6 +28,7 @@ public sealed partial class App : Application
                 saveLog: log => SessionLogFiles.DisplayPath(SessionLogFiles.Save(log, SessionLogFiles.DefaultDirectory)));
             var window = new MainWindow { DataContext = table };
             table.CardAnimator = window;
+            table.SoundPlayer = OperatingSystem.IsMacOS() ? new AfplaySoundPlayer() : null;
             window.Closing += (_, _) => table.Shutdown();
             desktop.MainWindow = window;
             table.Start();

@@ -39,6 +39,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private string _lastResult = "";
     private bool _shuffled;
     private Task? _session;
+    private bool _isSoundOn = true;
 
     /// <summary>Creates the table; call <see cref="Start"/> to begin playing.</summary>
     /// <param name="rules">The table rules.</param>
@@ -68,7 +69,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
         AddChipCommand = new RelayCommand<int>(AddChip, CanAddChip);
         RemoveChipCommand = new RelayCommand<int>(RemoveChip, value => Phase == TablePhase.Betting && BetStacks.Any(s => s.Chip.Value == value));
-        ClearBetCommand = new RelayCommand(() => SetChips([]), () => Phase == TablePhase.Betting);
+        ClearBetCommand = new RelayCommand(ClearBet, () => Phase == TablePhase.Betting);
         DealCommand = new RelayCommand(Deal, () => Phase == TablePhase.Betting && Player.PendingBet?.IsValidBet(Bet) == true);
         LeaveTableCommand = new RelayCommand(() => Player.LeaveTable(), () => Phase == TablePhase.Betting);
         HitCommand = new RelayCommand(() => Choose(PlayerAction.Hit), () => Player.CanChoose(PlayerAction.Hit));
@@ -87,6 +88,16 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
     /// <summary>Animates dealing and turning over cards; <c>null</c> = only the pause after each card.</summary>
     public ICardAnimator? CardAnimator { get; set; }
+
+    /// <summary>Plays the sounds of the table (spec E8); <c>null</c> = silent.</summary>
+    public ISoundPlayer? SoundPlayer { get; set; }
+
+    /// <summary>Whether sounds are played; the "Sound" switch in the header.</summary>
+    public bool IsSoundOn
+    {
+        get => _isSoundOn;
+        set => SetProperty(ref _isSoundOn, value);
+    }
 
     /// <summary>The player's hands (more than one after a split).</summary>
     public ObservableCollection<HandViewModel> PlayerHands { get; } = [];
@@ -295,6 +306,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     {
         _shuffled = true;
         UpdateShoe();
+        Play(Sound.Shuffle);
         return ValueTask.CompletedTask;
     }
 
@@ -316,6 +328,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         var hand = notification.Recipient.IsDealer ? Dealer : PlayerHands[notification.Recipient.HandIndex];
         var card = new CardViewModel(notification.Card);
         UpdateShoe();
+        Play(Sound.CardDeal);
         if (CardAnimator is { } animator)
         {
             card.IsDealing = true;
@@ -369,6 +382,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public async ValueTask OnHoleCardRevealedAsync(HoleCardRevealedNotification notification, CancellationToken ct)
     {
         var hidden = Dealer.Cards.FirstOrDefault(c => !c.IsFaceUp);
+        if (hidden is not null)
+        {
+            Play(Sound.CardTurn);
+        }
+
         if (hidden is not null && CardAnimator is { } animator)
         {
             await animator.TurnOverAsync(hidden, () => hidden.Card = notification.Card, ct);
@@ -410,6 +428,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         if (result.Bankroll is { } bankroll)
         {
             Bankroll = bankroll;
+        }
+
+        if (ResultSound(result) is { } sound)
+        {
+            Play(sound);
         }
 
         return ValueTask.CompletedTask;
@@ -569,6 +592,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             BetStacks.Insert(index, new ChipStackViewModel(new ChipViewModel(value)));
         }
 
+        Play(Sound.ChipPlace);
         UpdateBet();
     }
 
@@ -589,7 +613,35 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
             BetStacks.Remove(stack);
         }
 
+        Play(Sound.ChipTake);
         UpdateBet();
+    }
+
+    private void ClearBet()
+    {
+        if (BetStacks.Count > 0)
+        {
+            Play(Sound.ChipTake);
+        }
+
+        SetChips([]);
+    }
+
+    /// <summary>One sound per round from the net over all hands; none for a push.</summary>
+    private static Sound? ResultSound(RoundResult result) => result.Net switch
+    {
+        > 0 when result.PlayerHands.Any(h => h.Outcome == HandOutcome.BlackjackWin) => Sound.Blackjack,
+        > 0 => Sound.Win,
+        < 0 => Sound.Lose,
+        _ => null,
+    };
+
+    private void Play(Sound sound)
+    {
+        if (IsSoundOn)
+        {
+            SoundPlayer?.Play(sound);
+        }
     }
 
     private void SetChips(IEnumerable<int> chips)
