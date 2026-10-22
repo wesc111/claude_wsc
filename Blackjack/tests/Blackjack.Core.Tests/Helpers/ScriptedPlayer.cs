@@ -16,6 +16,11 @@ public sealed class ScriptedPlayer : IPlayerStrategy
 
     public List<DecisionContext> Decisions { get; } = [];
 
+    /// <summary>The answer to every insurance offer (SPEC E12).</summary>
+    public bool TakesInsurance { get; init; }
+
+    public List<InsuranceContext> InsuranceOffers { get; } = [];
+
     public Task<decimal?> GetBetAsync(BetContext context, CancellationToken ct = default)
     {
         BetRequests++;
@@ -31,5 +36,11 @@ public sealed class ScriptedPlayer : IPlayerStrategy
         }
 
         return Task.FromResult(action);
+    }
+
+    public Task<bool> DecideInsuranceAsync(InsuranceContext context, CancellationToken ct = default)
+    {
+        InsuranceOffers.Add(context);
+        return Task.FromResult(TakesInsurance);
     }
 }

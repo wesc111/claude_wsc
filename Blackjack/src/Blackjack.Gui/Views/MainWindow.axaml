@@ -56,6 +56,13 @@
             <Setter Property="BorderBrush" Value="#ffd24a" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
+        <Style Selector="Border.insurance">
+            <Setter Property="Background" Value="#102a1a" />
+            <Setter Property="BorderBrush" Value="#d4af37" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="20,12" />
+        </Style>
         <Style Selector="TextBlock.hint">
             <Setter Property="Foreground" Value="#cfe8ff" />
             <Setter Property="FontSize" Value="15" />
@@ -174,6 +181,7 @@
                     </ItemsControl>
                     <!-- Hidden for the dealer, who has no bet. -->
                     <TextBlock Text="{Binding BetText}" IsVisible="{Binding BetText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Text="{Binding InsuranceText}" IsVisible="{Binding InsuranceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <TextBlock Text="{Binding ResultText}" FontWeight="SemiBold" Foreground="#ffe08a" />
                 </StackPanel>
             </Border>
@@ -273,13 +281,31 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
+                <!-- The insurance box (spec E12): over the table print, between the dealer's and the player's cards, so both
+                     stay visible; everything else is disabled until it is answered. No keys. -->
+                <Border Grid.Row="1" Classes="insurance" IsVisible="{Binding IsInsuranceOpen}"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-20,0,0" ZIndex="1">
+                    <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="24">
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="Dealer shows an Ace." FontSize="14" Opacity="0.85" />
+                            <TextBlock Text="{Binding InsuranceQuestion}" FontSize="19" FontWeight="SemiBold" Foreground="#ffe08a" />
+                            <TextBlock Text="{Binding InsuranceNote}" FontSize="13" Opacity="0.75" />
+                            <TextBlock Classes="hint" Text="{Binding Hint}"
+                                       IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                            <Button Content="{Binding TakeInsuranceText}" Command="{Binding TakeInsuranceCommand}" MinWidth="130" />
+                            <Button Content="{Binding DeclineInsuranceText}" Command="{Binding DeclineInsuranceCommand}" MinWidth="130"
+                                    Classes.recommended="{Binding IsNoInsuranceRecommended}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
                 <StackPanel Grid.Row="2" HorizontalAlignment="Center" Margin="0,8,0,0" Spacing="4">
                     <TextBlock Text="{Binding LastResult}" FontSize="22" FontWeight="Bold" Foreground="#ffe08a"
                                HorizontalAlignment="Center" />
                     <!-- Strategy hint or feedback (spec E11). -->
                     <TextBlock Classes="hint" Classes.mistake="{Binding IsHintMistake}" Text="{Binding Hint}"
-                               IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                               HorizontalAlignment="Center" />
+                               IsVisible="{Binding IsHintOnTable}" HorizontalAlignment="Center" />
                 </StackPanel>
             </Grid>
 

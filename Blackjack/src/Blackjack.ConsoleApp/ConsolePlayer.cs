@@ -7,6 +7,7 @@ namespace Blackjack.ConsoleApp;
 internal sealed class ConsolePlayer(TextReader input, TextWriter output, ICardSource? shoe = null) : IPlayerStrategy
 {
     private decimal? _lastBet;
+    private Rules _rules = Rules.Default;
 
     /// <summary>True once the player has asked to leave (<c>q</c>) or the input has ended.</summary>
     public bool QuitRequested { get; private set; }
@@ -19,6 +20,7 @@ internal sealed class ConsolePlayer(TextReader input, TextWriter output, ICardSo
             return null;
         }
 
+        _rules = context.Rules;
         var min = context.Rules.MinBet;
         var max = context.MaxAllowedBet;
         var defaultBet = Math.Clamp(_lastBet ?? min, min, max);
@@ -112,6 +114,30 @@ internal sealed class ConsolePlayer(TextReader input, TextWriter output, ICardSo
             else
             {
                 return command.Action;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DecideInsuranceAsync(InsuranceContext context, CancellationToken ct = default)
+    {
+        // Even money only where it is 1:1 (3:2 payout, SPEC E12).
+        var prompt = context.IsBlackjack && _rules.BlackjackPayout == 1.5m
+            ? $"You have Blackjack, the dealer shows an Ace. Even money (+{Money.Format(context.Amount * 2)} now)? (y/n): "
+            : $"The dealer shows an Ace. Insurance for {Money.Format(context.Amount)}? (y/n): ";
+        while (true)
+        {
+            output.Write(prompt);
+            var line = await ReadLineAsync(ct);
+            switch (line?.ToLowerInvariant())
+            {
+                case null or "n":
+                    return false;
+                case "y":
+                    return true;
+                default:
+                    output.WriteLine("Please enter y or n.");
+                    break;
             }
         }
     }

@@ -8,12 +8,19 @@ public sealed class GuiPlayer : IPlayerStrategy
 {
     private TaskCompletionSource<decimal?>? _bet;
     private TaskCompletionSource<PlayerAction>? _decision;
+    private TaskCompletionSource<bool>? _insurance;
 
     /// <summary>Raised when the engine asks for a bet.</summary>
     public event EventHandler<BetContext>? BetRequested;
 
     /// <summary>Raised when the engine asks for an action.</summary>
     public event EventHandler<DecisionContext>? DecisionRequested;
+
+    /// <summary>Raised when the engine offers insurance (spec E12).</summary>
+    public event EventHandler<InsuranceContext>? InsuranceRequested;
+
+    /// <summary>The pending insurance offer, or <c>null</c>.</summary>
+    public InsuranceContext? PendingInsurance { get; private set; }
 
     /// <summary>The pending bet request, or <c>null</c>.</summary>
     public BetContext? PendingBet { get; private set; }
@@ -40,6 +47,30 @@ public sealed class GuiPlayer : IPlayerStrategy
         PendingDecision = context;
         DecisionRequested?.Invoke(this, context);
         return WaitAsync(tcs, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> DecideInsuranceAsync(InsuranceContext context, CancellationToken ct = default)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        _insurance = tcs;
+        PendingInsurance = context;
+        InsuranceRequested?.Invoke(this, context);
+        return WaitAsync(tcs, ct);
+    }
+
+    /// <summary>Answers the insurance offer; returns <c>false</c> if no offer is pending.</summary>
+    public bool AnswerInsurance(bool take)
+    {
+        if (_insurance is not { } tcs)
+        {
+            return false;
+        }
+
+        _insurance = null;
+        PendingInsurance = null;
+        tcs.TrySetResult(take);
+        return true;
     }
 
     /// <summary>Places <paramref name="bet"/>; returns <c>false</c> if no bet is pending or the bet is invalid.</summary>

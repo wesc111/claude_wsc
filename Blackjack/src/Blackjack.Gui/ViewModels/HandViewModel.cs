@@ -9,6 +9,7 @@ public sealed class HandViewModel : ObservableObject
     private string _title;
     private string _totalText = "";
     private string _betText = "";
+    private string _insuranceText = "";
     private string _resultText = "";
     private bool _isActive;
 
@@ -43,6 +44,13 @@ public sealed class HandViewModel : ObservableObject
     {
         get => _betText;
         set => SetProperty(ref _betText, value);
+    }
+
+    /// <summary>The insurance of the hand (spec E12), e.g. <c>Insurance 5</c> or <c>Insurance wins +10</c>; empty without insurance.</summary>
+    public string InsuranceText
+    {
+        get => _insuranceText;
+        set => SetProperty(ref _insuranceText, value);
     }
 
     /// <summary>The result, e.g. <c>You win +25</c>; empty until the hand is settled.</summary>

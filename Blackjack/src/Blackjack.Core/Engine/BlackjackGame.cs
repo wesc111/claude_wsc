@@ -136,23 +136,28 @@ public sealed class BlackjackGame
         dealer.Add(holeCard);
         await NotifyAsync(static (o, n, c) => o.OnCardDealtAsync(n, c), new CardDealtNotification(CardRecipient.Dealer, null, false), ct);
 
+        var insurance = await OfferInsuranceAsync(player, hands[0].Hand, upcard, bet, ct);
+
         // Peek: a dealer Blackjack ends the round before any decision, so only the original bet is at stake.
         var peekable = upcard.IsAce || upcard.IsTenValued;
         if (peekable && dealer.IsBlackjack)
         {
             await RevealHoleCardAsync(holeCard, ct);
+            await SettleInsuranceAsync(insurance, dealer, ct);
             await FinishHandsAsync(hands, ct);
         }
         else if (hands[0].Hand.IsBlackjack)
         {
+            await SettleInsuranceAsync(insurance, dealer, ct);
             await FinishHandsAsync(hands, ct);
             await RevealHoleCardAsync(holeCard, ct);
         }
         else
         {
+            await SettleInsuranceAsync(insurance, dealer, ct);
             for (var i = 0; i < hands.Count; i++)
             {
-                await PlayHandAsync(player, hands, i, upcard, ct);
+                await PlayHandAsync(player, hands, i, upcard, insurance, ct);
                 await FinishHandAsync(hands, i, ct);
             }
 
@@ -166,8 +171,31 @@ public sealed class BlackjackGame
             }
         }
 
-        return await SettleAsync(hands, bet, dealer, ct);
+        return await SettleAsync(hands, bet, insurance, dealer, ct);
     }
+
+    // Insurance (SPEC E12): offered on a dealer Ace if the bankroll covers the bet plus half of it; returns the insurance bet or 0.
+    private async Task<decimal> OfferInsuranceAsync(IPlayerStrategy player, Hand hand, Card upcard, decimal bet, CancellationToken ct)
+    {
+        var amount = bet / 2;
+        if (!upcard.IsAce || (Bankroll is { } available && bet + amount > available))
+        {
+            return 0m;
+        }
+
+        var context = new InsuranceContext(hand.Cards.ToArray(), hand.Total, hand.IsBlackjack, upcard, amount);
+        var taken = await player.DecideInsuranceAsync(context, ct);
+        ct.ThrowIfCancellationRequested();
+        return taken ? amount : 0m;
+    }
+
+    private Task SettleInsuranceAsync(decimal insurance, Hand dealer, CancellationToken ct) =>
+        insurance == 0m
+            ? Task.CompletedTask
+            : NotifyAsync(static (o, n, c) => o.OnInsuranceSettledAsync(n, c),
+                          new InsuranceSettledNotification(insurance, InsuranceNet(insurance, dealer)), ct);
+
+    private static decimal InsuranceNet(decimal insurance, Hand dealer) => dealer.IsBlackjack ? 2 * insurance : -insurance;
 
     private void ValidateBet(decimal bet)
     {
@@ -179,7 +207,7 @@ public sealed class BlackjackGame
         }
     }
 
-    private async Task PlayHandAsync(IPlayerStrategy player, List<PlayerHand> hands, int index, Card upcard, CancellationToken ct)
+    private async Task PlayHandAsync(IPlayerStrategy player, List<PlayerHand> hands, int index, Card upcard, decimal insurance, CancellationToken ct)
     {
         // A hand created by a split receives its second card when its turn starts.
         if (hands[index].Hand.Cards.Count == 1)
@@ -190,7 +218,7 @@ public sealed class BlackjackGame
         while (!hands[index].Hand.IsBust && hands[index].Hand.Total < 21)
         {
             var current = hands[index];
-            var allowed = AllowedActions(hands, index);
+            var allowed = AllowedActions(hands, index, insurance);
 
             // Split Aces without a possible re-split: the turn ends after their one card.
             if (!allowed.Contains(PlayerAction.Hit) && !allowed.Contains(PlayerAction.Split))
@@ -240,11 +268,13 @@ public sealed class BlackjackGame
         await DealToPlayerAsync(hands, index, ct);
     }
 
-    private IReadOnlySet<PlayerAction> AllowedActions(List<PlayerHand> hands, int index)
+    private IReadOnlySet<PlayerAction> AllowedActions(List<PlayerHand> hands, int index, decimal insurance)
     {
         var current = hands[index];
         var hand = current.Hand;
-        var committed = 0m;
+
+        // A lost insurance bet is no longer available for Double and Split.
+        var committed = insurance;
         foreach (var h in hands)
         {
             committed += h.Bet;
@@ -263,10 +293,11 @@ public sealed class BlackjackGame
         return ActionSets[mask];
     }
 
-    private async Task<RoundResult> SettleAsync(List<PlayerHand> hands, decimal initialBet, Hand dealer, CancellationToken ct)
+    private async Task<RoundResult> SettleAsync(List<PlayerHand> hands, decimal initialBet, decimal insurance, Hand dealer, CancellationToken ct)
     {
         var results = new List<HandResult>(hands.Count);
-        var net = 0m;
+        var insuranceNet = insurance == 0m ? 0m : InsuranceNet(insurance, dealer);
+        var net = insuranceNet;
         var totalBet = 0m;
         for (var i = 0; i < hands.Count; i++)
         {
@@ -294,7 +325,9 @@ public sealed class BlackjackGame
             dealer.Total,
             net,
             Bankroll,
-            initialBet);
+            initialBet,
+            insurance,
+            insuranceNet);
         await NotifyAsync(static (o, r, c) => o.OnRoundCompletedAsync(r, c), result, ct);
         return result;
     }

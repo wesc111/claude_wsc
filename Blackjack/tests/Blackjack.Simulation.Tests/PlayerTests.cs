@@ -16,6 +16,19 @@ public sealed class PlayerTests
     }
 
     [Theory]
+    [InlineData("basic")]
+    [InlineData("basic-hs")]
+    [InlineData("mimic")]
+    [InlineData("neverbust")]
+    public async Task EveryPlayerDeclinesInsurance(string name)
+    {
+        // Spec E12: basic strategy never takes insurance, so the simulation results stay as before.
+        IPlayerStrategy player = PlayerFactory.Create(name, 10m, Rules.Default);
+
+        Assert.False(await player.DecideInsuranceAsync(new InsuranceContext(Cards.Parse("A K"), 21, true, Cards.ParseOne("A"), 5m), Ct));
+    }
+
+    [Theory]
     [InlineData("10 2", "3", PlayerAction.Hit)]
     [InlineData("10 2", "4", PlayerAction.Stand)]
     [InlineData("10 6", "10", PlayerAction.Hit)]

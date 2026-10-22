@@ -9,6 +9,9 @@ public enum TablePhase
     /// <summary>Cards are being dealt; no input.</summary>
     Dealing,
 
+    /// <summary>The dealer shows an Ace: waiting for the answer to the insurance question (spec E12).</summary>
+    Insurance,
+
     /// <summary>Waiting for the player's action on the active hand.</summary>
     Playing,
 

@@ -29,6 +29,14 @@ public sealed class RecordingObserver : IGameObserver
 
     public List<HandDoubledNotification> Doubles { get; } = [];
 
+    public List<InsuranceSettledNotification> Insurances { get; } = [];
+
+    public ValueTask OnInsuranceSettledAsync(InsuranceSettledNotification notification, CancellationToken ct)
+    {
+        Insurances.Add(notification);
+        return Record("InsuranceSettled");
+    }
+
     public ValueTask OnHandSplitAsync(HandSplitNotification notification, CancellationToken ct)
     {
         Splits.Add(notification);

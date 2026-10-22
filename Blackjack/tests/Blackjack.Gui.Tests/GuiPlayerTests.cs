@@ -11,6 +11,36 @@ public sealed class GuiPlayerTests
     private static DecisionContext Decision() => new(Cards.Parse("10 6"), 16, false, Cards.ParseOne("9"), HitOrStand);
 
     [Fact]
+    public async Task InsuranceIsPendingUntilAnswered()
+    {
+        var player = new GuiPlayer();
+        InsuranceContext? offered = null;
+        player.InsuranceRequested += (_, c) => offered = c;
+        Assert.False(player.AnswerInsurance(true), "no offer pending");
+
+        var answer = player.DecideInsuranceAsync(new InsuranceContext(Cards.Parse("10 7"), 17, false, Cards.ParseOne("A"), 5m), Ct);
+
+        Assert.False(answer.IsCompleted);
+        Assert.NotNull(offered);
+        Assert.NotNull(player.PendingInsurance);
+        Assert.True(player.AnswerInsurance(true));
+        Assert.True(await answer);
+        Assert.Null(player.PendingInsurance);
+        Assert.False(player.AnswerInsurance(false), "answered only once");
+    }
+
+    [Fact]
+    public async Task CancellationEndsTheInsuranceOffer()
+    {
+        using var cts = new CancellationTokenSource();
+        var answer = new GuiPlayer().DecideInsuranceAsync(new InsuranceContext(Cards.Parse("10 7"), 17, false, Cards.ParseOne("A"), 5m), cts.Token);
+
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => answer);
+    }
+
+    [Fact]
     public async Task BetIsPendingUntilPlaced()
     {
         var player = new GuiPlayer();

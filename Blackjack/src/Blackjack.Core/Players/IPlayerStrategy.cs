@@ -14,4 +14,13 @@ public interface IPlayerStrategy
     /// <param name="ct">Cancels the round.</param>
     /// <returns>One of <see cref="DecisionContext.AllowedActions"/>.</returns>
     Task<PlayerAction> DecideAsync(DecisionContext context, CancellationToken ct = default);
+
+    /// <summary>
+    /// Asks whether to take insurance (half the bet) when the dealer shows an Ace, before the dealer peeks (SPEC E12).
+    /// The default declines, as basic strategy does.
+    /// </summary>
+    /// <param name="context">The player's hand, the dealer's Ace and the insurance amount.</param>
+    /// <param name="ct">Cancels the round.</param>
+    /// <returns><c>true</c> to take insurance.</returns>
+    Task<bool> DecideInsuranceAsync(InsuranceContext context, CancellationToken ct = default) => Task.FromResult(false);
 }

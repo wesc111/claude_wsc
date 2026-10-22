@@ -26,6 +26,7 @@ public sealed class SessionReportTests
                 "Blackjacks               0   (0.0 % of rounds)",
                 "Doubles                  1   (won 1)",
                 "Splits                   1",
+                "Insurance                0   (won 0, net 0)",
                 "Player busts             0   (0.0 % of hands)",
                 "Dealer busts             0   (0.0 % of rounds)",
                 "Initial bets             20",
@@ -68,6 +69,9 @@ public sealed class SessionReportTests
                 "Doubles,1",
                 "DoublesWon,1",
                 "Splits,1",
+                "Insurances,0",
+                "InsurancesWon,0",
+                "InsuranceNet,0",
                 "PlayerBusts,0",
                 "DealerBusts,0",
                 "InitialBets,20",
@@ -91,10 +95,40 @@ public sealed class SessionReportTests
         Assert.Equal(
             Lines(
                 SessionReport.RoundsCsvHeader,
-                "1,2026-10-17 15:31:05,1,10,10♠ 7♠,17,no,no,9♠ 8♠,17,Push,0,1000",
-                "2,2026-10-17 15:33:10,1,20,8♠ 3♠ 10♠,21,yes,yes,10♠ 7♠,17,Win,20,1010",
-                "2,2026-10-17 15:33:10,2,10,8♠ 2♠,10,no,yes,10♠ 7♠,17,Loss,-10,1010"),
+                "1,2026-10-17 15:31:05,1,10,10♠ 7♠,17,no,no,9♠ 8♠,17,Push,0,1000,,",
+                "2,2026-10-17 15:33:10,1,20,8♠ 3♠ 10♠,21,yes,yes,10♠ 7♠,17,Win,20,1010,,",
+                "2,2026-10-17 15:33:10,2,10,8♠ 2♠,10,no,yes,10♠ 7♠,17,Loss,-10,1010,,"),
             output.ToString());
+    }
+
+    [Fact]
+    public void TheInsuranceIsReportedPerRoundAndInTheStatistics()
+    {
+        // Spec E12: a won insurance against a dealer Blackjack (net 0) and a lost one (net −15).
+        var log = new SessionLog(Rules.Default, 1000m, () => Sessions.Start);
+        log.Record(new RoundResult(10m, [new HandResult(Cards.Parse("10 7"), 17, false, 10m, HandOutcome.DealerBlackjack, -10m)],
+            Cards.Parse("A K"), 21, 0m, 1000m, 10m, 5m, 10m));
+        log.Record(new RoundResult(10m, [new HandResult(Cards.Parse("10 7"), 17, false, 10m, HandOutcome.Loss, -10m)],
+            Cards.Parse("A 9"), 20, -15m, 985m, 10m, 5m, -5m));
+        var text = Writer();
+        var statistics = Writer();
+        var rounds = Writer();
+
+        SessionReport.WriteText(text, log, Sessions.End);
+        SessionReport.WriteStatisticsCsv(statistics, log, Sessions.End);
+        SessionReport.WriteRoundsCsv(rounds, log);
+
+        Assert.Contains("Insurance                2   (won 1, net +5)", text.ToString(), StringComparison.Ordinal);
+        Assert.Contains(
+            Lines(
+                "1  15:30:00   10  10♠ 7♠ (17)  A♠ K♠ (Blackjack)  Dealer has Blackjack – you lose  -10",
+                "               5  Insurance                       Insurance wins                   +10      1000",
+                "2  15:30:00   10  10♠ 7♠ (17)  A♠ 9♠ (soft 20)    You lose                         -10",
+                "               5  Insurance                       Insurance lost                    -5       985"),
+            text.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Insurances,2\nInsurancesWon,1\nInsuranceNet,5\n", statistics.ToString(), StringComparison.Ordinal);
+        Assert.EndsWith("DealerBlackjack,-10,1000,5,10\n" + "2,2026-10-17 15:30:00,1,10,10♠ 7♠,17,no,no,A♠ 9♠,20,Loss,-10,985,5,-5\n",
+                        rounds.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

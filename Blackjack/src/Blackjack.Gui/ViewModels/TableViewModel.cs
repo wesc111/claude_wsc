@@ -53,6 +53,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private string _hint = "";
     private bool _isHintMistake;
     private PlayerAction? _recommendedAction;
+    private bool _isNoInsuranceRecommended;
+    private bool _isEvenMoney;
+    private string _insuranceQuestion = "";
 
     /// <summary>Creates the table; call <see cref="Start"/> to begin playing.</summary>
     /// <param name="rules">The table rules.</param>
@@ -82,6 +85,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
         Player.BetRequested += OnBetRequested;
         Player.DecisionRequested += OnDecisionRequested;
+        Player.InsuranceRequested += OnInsuranceRequested;
 
         AddChipCommand = new RelayCommand<int>(AddChip, CanAddChip);
         RemoveChipCommand = new RelayCommand<int>(RemoveChip, value => Phase == TablePhase.Betting && BetStacks.Any(s => s.Chip.Value == value));
@@ -92,9 +96,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         StandCommand = new RelayCommand(() => Choose(PlayerAction.Stand), () => Player.CanChoose(PlayerAction.Stand));
         DoubleCommand = new RelayCommand(() => Choose(PlayerAction.Double), () => Player.CanChoose(PlayerAction.Double));
         SplitCommand = new RelayCommand(() => Choose(PlayerAction.Split), () => Player.CanChoose(PlayerAction.Split));
+        TakeInsuranceCommand = new RelayCommand(() => AnswerInsurance(take: true), () => Player.PendingInsurance is not null);
+        DeclineInsuranceCommand = new RelayCommand(() => AnswerInsurance(take: false), () => Player.PendingInsurance is not null);
         NewGameCommand = new RelayCommand(() => _newGame?.TrySetResult(), () => IsSessionOver);
         ToggleSoundCommand = new RelayCommand(() => IsSoundOn = !IsSoundOn);
-        _commands = [AddChipCommand, RemoveChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, NewGameCommand];
+        _commands = [AddChipCommand, RemoveChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, TakeInsuranceCommand, DeclineInsuranceCommand, NewGameCommand];
     }
 
     /// <summary>The human player whose requests the buttons complete.</summary>
@@ -139,8 +145,17 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public string Hint
     {
         get => _hint;
-        private set => SetProperty(ref _hint, value);
+        private set
+        {
+            if (SetProperty(ref _hint, value))
+            {
+                OnPropertyChanged(nameof(IsHintOnTable));
+            }
+        }
     }
+
+    /// <summary>Whether <see cref="Hint"/> is shown below the hands; while the insurance box is open it is shown in the box.</summary>
+    public bool IsHintOnTable => Hint.Length > 0 && !IsInsuranceOpen;
 
     /// <summary>Whether <see cref="Hint"/> reports a decision that differed from basic strategy.</summary>
     public bool IsHintMistake
@@ -206,10 +221,61 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
                 OnPropertyChanged(nameof(IsSessionOver));
                 OnPropertyChanged(nameof(IsBetweenRounds));
                 OnPropertyChanged(nameof(CanChangeDecks));
+                OnPropertyChanged(nameof(IsInsuranceOpen));
+                OnPropertyChanged(nameof(IsHintOnTable));
                 RefreshCommands();
             }
         }
     }
+
+    /// <summary>Whether the insurance box is shown (spec E12): the dealer shows an Ace and waits for the answer.</summary>
+    public bool IsInsuranceOpen => Phase == TablePhase.Insurance;
+
+    /// <summary>Whether the offer is even money (Blackjack at 3:2) rather than insurance.</summary>
+    public bool IsEvenMoney
+    {
+        get => _isEvenMoney;
+        private set
+        {
+            if (SetProperty(ref _isEvenMoney, value))
+            {
+                OnPropertyChanged(nameof(InsuranceNote));
+                OnPropertyChanged(nameof(TakeInsuranceText));
+                OnPropertyChanged(nameof(DeclineInsuranceText));
+            }
+        }
+    }
+
+    /// <summary>The question of the insurance box, e.g. <c>Insurance for 5?</c>.</summary>
+    public string InsuranceQuestion
+    {
+        get => _insuranceQuestion;
+        private set => SetProperty(ref _insuranceQuestion, value);
+    }
+
+    /// <summary>What the offer pays.</summary>
+    public string InsuranceNote => IsEvenMoney
+        ? "Even money wins 1 to 1 whether or not the dealer has Blackjack."
+        : "Insurance pays 2 to 1 if the dealer has Blackjack.";
+
+    /// <summary>The text of the button that takes the offer.</summary>
+    public string TakeInsuranceText => IsEvenMoney ? "Even money" : "Insurance";
+
+    /// <summary>The text of the button that declines the offer.</summary>
+    public string DeclineInsuranceText => IsEvenMoney ? "No" : "No insurance";
+
+    /// <summary>Whether the decline button is highlighted as the basic strategy action (hint mode Show).</summary>
+    public bool IsNoInsuranceRecommended
+    {
+        get => _isNoInsuranceRecommended;
+        private set => SetProperty(ref _isNoInsuranceRecommended, value);
+    }
+
+    /// <summary>Takes the insurance or even money (spec E12; no key).</summary>
+    public IRelayCommand TakeInsuranceCommand { get; }
+
+    /// <summary>Declines the insurance or even money (no key).</summary>
+    public IRelayCommand DeclineInsuranceCommand { get; }
 
     /// <summary>True when the game is over or the player left the table.</summary>
     public bool IsSessionOver => Phase is TablePhase.GameOver or TablePhase.Left;
@@ -498,6 +564,14 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     }
 
     /// <inheritdoc />
+    public ValueTask OnInsuranceSettledAsync(InsuranceSettledNotification notification, CancellationToken ct)
+    {
+        var outcome = notification.Net > 0 ? "wins" : "lost";
+        PlayerHands[0].InsuranceText = $"Insurance {outcome} {DisplayText.SignedMoney(notification.Net)}";
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public async ValueTask OnHandSplitAsync(HandSplitNotification notification, CancellationToken ct)
     {
         var hand = PlayerHands[notification.HandIndex];
@@ -567,9 +641,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <inheritdoc />
     public ValueTask OnRoundCompletedAsync(RoundResult result, CancellationToken ct)
     {
-        LastResult = result.PlayerHands.Count == 1
-            ? PlayerHands[0].ResultText
-            : $"Result {DisplayText.SignedMoney(result.Net)}";
+        LastResult = result.PlayerHands.Count > 1
+            ? $"Result {DisplayText.SignedMoney(result.Net)}"
+            : result.InsuranceBet > 0
+                ? $"{PlayerHands[0].ResultText} · Insurance {DisplayText.SignedMoney(result.InsuranceNet)}"
+                : PlayerHands[0].ResultText;
         if (result.Bankroll is { } bankroll)
         {
             Bankroll = bankroll;
@@ -747,6 +823,50 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         RefreshCommands();
     }
 
+    private void OnInsuranceRequested(object? sender, InsuranceContext offer)
+    {
+        IsEvenMoney = DisplayText.IsEvenMoney(offer, _rules.BlackjackPayout);
+        InsuranceQuestion = DisplayText.InsuranceQuestion(offer, _rules.BlackjackPayout);
+        Status = IsEvenMoney ? "Even money?" : "Insurance?";
+        if (ActiveHints == HintMode.Show)
+        {
+            Hint = DisplayText.InsuranceHint(IsEvenMoney);
+            IsHintMistake = false;
+            IsNoInsuranceRecommended = true;
+        }
+
+        Phase = TablePhase.Insurance;
+        RefreshCommands();
+    }
+
+    private void AnswerInsurance(bool take)
+    {
+        if (Player.PendingInsurance is not { } offer)
+        {
+            return;
+        }
+
+        if (ActiveHints == HintMode.Show)
+        {
+            ClearHint();
+        }
+        else if (ActiveHints == HintMode.Feedback && take)
+        {
+            Hint = DisplayText.InsuranceFeedback(IsEvenMoney);
+            IsHintMistake = true;
+        }
+
+        if (take)
+        {
+            PlayerHands[0].InsuranceText = $"Insurance {DisplayText.Money(offer.Amount)}";
+            Play(Sound.ChipPlace);
+        }
+
+        Phase = TablePhase.Dealing;
+        Player.AnswerInsurance(take);
+        RefreshCommands();
+    }
+
     private bool CanAddChip(int value) =>
         Phase == TablePhase.Betting && ChipViewModel.Values.Contains(value)
         && Player.PendingBet is { } context && Bet + value <= context.MaxAllowedBet;
@@ -888,6 +1008,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         Hint = "";
         IsHintMistake = false;
         RecommendedAction = null;
+        IsNoInsuranceRecommended = false;
     }
 
     private async Task PauseAsync(CancellationToken ct)

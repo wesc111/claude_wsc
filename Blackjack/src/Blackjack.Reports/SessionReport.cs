@@ -10,7 +10,7 @@ public static class SessionReport
 
     /// <summary>The header of the rounds CSV.</summary>
     public const string RoundsCsvHeader =
-        "Round,Time,Hand,Bet,PlayerCards,PlayerTotal,Doubled,FromSplit,DealerCards,DealerTotal,Outcome,Net,BankrollAfter";
+        "Round,Time,Hand,Bet,PlayerCards,PlayerTotal,Doubled,FromSplit,DealerCards,DealerTotal,Outcome,Net,BankrollAfter,InsuranceBet,InsuranceNet";
 
     /// <summary>Writes the readable report: header, statistics and the list of rounds.</summary>
     public static void WriteText(TextWriter output, SessionLog log, DateTimeOffset endedAt)
@@ -58,6 +58,9 @@ public static class SessionReport
             ("Doubles", Number(s.Doubles)),
             ("DoublesWon", Number(s.DoublesWon)),
             ("Splits", Number(s.Splits)),
+            ("Insurances", Number(s.Insurances)),
+            ("InsurancesWon", Number(s.InsurancesWon)),
+            ("InsuranceNet", ReportText.Money(s.InsuranceNet)),
             ("PlayerBusts", Number(s.PlayerBusts)),
             ("DealerBusts", Number(s.DealerBusts)),
             ("InitialBets", ReportText.Money(s.InitialBets)),
@@ -77,7 +80,7 @@ public static class SessionReport
         }
     }
 
-    /// <summary>Writes one row per hand, see <see cref="RoundsCsvHeader"/>.</summary>
+    /// <summary>Writes one row per hand, see <see cref="RoundsCsvHeader"/>; the insurance of a round is in the row of its first hand.</summary>
     public static void WriteRoundsCsv(TextWriter output, SessionLog log)
     {
         ArgumentNullException.ThrowIfNull(output);
@@ -104,6 +107,8 @@ public static class SessionReport
                     h.Outcome.ToString(),
                     ReportText.Money(h.Net),
                     Optional(r.Bankroll),
+                    i == 0 && r.InsuranceBet > 0 ? ReportText.Money(r.InsuranceBet) : "",
+                    i == 0 && r.InsuranceBet > 0 ? ReportText.Money(r.InsuranceNet) : "",
                 ];
                 output.WriteLine(string.Join(",", fields.Select(Csv)));
             }
@@ -120,6 +125,7 @@ public static class SessionReport
         yield return ("Blackjacks", $"{s.Blackjacks}   ({ReportText.Percent(s.Blackjacks, s.Rounds)} of rounds)");
         yield return ("Doubles", $"{s.Doubles}   (won {s.DoublesWon})");
         yield return ("Splits", $"{s.Splits}");
+        yield return ("Insurance", $"{s.Insurances}   (won {s.InsurancesWon}, net {ReportText.SignedMoney(s.InsuranceNet)})");
         yield return ("Player busts", $"{s.PlayerBusts}   ({ReportText.Percent(s.PlayerBusts, s.Hands)} of hands)");
         yield return ("Dealer busts", $"{s.DealerBusts}   ({ReportText.Percent(s.DealerBusts, s.Rounds)} of rounds)");
         yield return ("Initial bets", ReportText.Money(s.InitialBets));
@@ -149,7 +155,7 @@ public static class SessionReport
                 }
 
                 var first = i == 0;
-                var last = i == r.PlayerHands.Count - 1;
+                var last = i == r.PlayerHands.Count - 1 && r.InsuranceBet == 0;
                 rows.Add(
                 [
                     first ? Number(round.Number) : "",
@@ -160,6 +166,17 @@ public static class SessionReport
                     ReportText.Outcome(h.Outcome),
                     ReportText.SignedMoney(h.Net),
                     last ? Bankroll(r.Bankroll) : "",
+                ]);
+            }
+
+            // The insurance of the round in a row of its own, below the hands.
+            if (r.InsuranceBet > 0)
+            {
+                rows.Add(
+                [
+                    "", "", ReportText.Money(r.InsuranceBet), "Insurance", "",
+                    r.InsuranceNet > 0 ? "Insurance wins" : "Insurance lost",
+                    ReportText.SignedMoney(r.InsuranceNet), Bankroll(r.Bankroll),
                 ]);
             }
         }

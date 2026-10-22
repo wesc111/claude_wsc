@@ -27,6 +27,14 @@ public interface IGameObserver
     /// <param name="ct">Cancels the round.</param>
     ValueTask OnHoleCardRevealedAsync(HoleCardRevealedNotification notification, CancellationToken ct) => ValueTask.CompletedTask;
 
+    /// <summary>
+    /// The insurance taken by the player has been settled when the dealer peeked: sent only if insurance was taken,
+    /// after the hole card was revealed on a dealer Blackjack, otherwise before the player's turn.
+    /// </summary>
+    /// <param name="notification">The insurance bet and its net amount.</param>
+    /// <param name="ct">Cancels the round.</param>
+    ValueTask OnInsuranceSettledAsync(InsuranceSettledNotification notification, CancellationToken ct) => ValueTask.CompletedTask;
+
     /// <summary>A pair has been split: the second card moved to a new hand appended at the end.</summary>
     /// <param name="notification">Indices of the split and the new hand, and the moved card.</param>
     /// <param name="ct">Cancels the round.</param>

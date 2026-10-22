@@ -54,6 +54,15 @@ public sealed class SessionStatistics
     /// <summary>Number of rounds with at least one split.</summary>
     public int Splits { get; private set; }
 
+    /// <summary>Number of rounds in which insurance was taken (SPEC E12).</summary>
+    public int Insurances { get; private set; }
+
+    /// <summary>Number of insurance bets that won (dealer Blackjack).</summary>
+    public int InsurancesWon { get; private set; }
+
+    /// <summary>Sum of the net amounts of all insurance bets; included in <see cref="Net"/>.</summary>
+    public decimal InsuranceNet { get; private set; }
+
     /// <summary>Sum of the initial bets (before Double and Split).</summary>
     public decimal InitialBets { get; private set; }
 
@@ -99,6 +108,15 @@ public sealed class SessionStatistics
         Net += result.Net;
         InitialBets += result.InitialBet;
         TotalWagered += result.TotalBet;
+        if (result.InsuranceBet > 0)
+        {
+            Insurances++;
+            InsuranceNet += result.InsuranceNet;
+            if (result.InsuranceNet > 0)
+            {
+                InsurancesWon++;
+            }
+        }
 
         foreach (var hand in result.PlayerHands)
         {

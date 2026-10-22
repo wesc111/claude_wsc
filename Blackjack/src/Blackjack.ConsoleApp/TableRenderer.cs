@@ -92,6 +92,15 @@ internal sealed class TableRenderer(TextWriter output, CardFormatter formatter) 
     }
 
     /// <inheritdoc />
+    public ValueTask OnInsuranceSettledAsync(InsuranceSettledNotification notification, CancellationToken ct)
+    {
+        output.WriteLine(notification.Net > 0
+            ? $"Insurance wins {Money.FormatSigned(notification.Net)}."
+            : $"Insurance lost {Money.FormatSigned(notification.Net)}.");
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public ValueTask OnHandSettledAsync(HandSettledNotification notification, CancellationToken ct)
     {
         _settled.Add(notification);
@@ -102,7 +111,7 @@ internal sealed class TableRenderer(TextWriter output, CardFormatter formatter) 
     public ValueTask OnRoundCompletedAsync(RoundResult result, CancellationToken ct)
     {
         var bankroll = result.Bankroll is { } b ? Money.Format(b) : "unlimited";
-        if (_settled.Count == 1)
+        if (_settled.Count == 1 && result.InsuranceBet == 0)
         {
             output.WriteLine($"Result:  {Describe(_settled[0].Outcome)}  {Money.FormatSigned(result.Net)}   Bankroll: {bankroll}");
         }
@@ -111,6 +120,11 @@ internal sealed class TableRenderer(TextWriter output, CardFormatter formatter) 
             foreach (var hand in _settled)
             {
                 output.WriteLine($"{Label(hand.HandIndex)}{Describe(hand.Outcome)}  {Money.FormatSigned(hand.Net)}");
+            }
+
+            if (result.InsuranceBet > 0)
+            {
+                output.WriteLine($"Insurance {(result.InsuranceNet > 0 ? "wins" : "lost")}  {Money.FormatSigned(result.InsuranceNet)}");
             }
 
             output.WriteLine($"Result:  {Money.FormatSigned(result.Net)}   Bankroll: {bankroll}");

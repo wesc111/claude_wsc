@@ -75,6 +75,7 @@ public sealed record Rules
 1. **Reshuffle check:** If the penetration mark has been reached, reshuffle the shoe.
 2. **Bet:** Player places a bet, or returns `null` to leave the table (see 2.5).
 3. **Deal:** Player card (up), dealer card (up = *upcard*), player card (up), dealer card (down = *hole card*).
+   - **Insurance (since E12):** if the upcard is an Ace, the player is offered insurance for half the bet before the peek (see E12).
 4. **Peek:** If the upcard is an Ace or ten-valued, the dealer checks the hole card:
    - Dealer has Blackjack, player has Blackjack → **Push**
    - Dealer has Blackjack, player does not → **DealerBlackjack**, player loses the bet, round ends
@@ -175,7 +176,7 @@ Blackjack.slnx
 | `IPlayerStrategy` | interface | Bet and action decisions |
 | `IGameObserver` | interface | Async notifications about the course of a round (see 3.5) |
 | `HandResult` | record | Snapshot of one player hand: cards, total, soft flag, bet, outcome, net amount |
-| `RoundResult` | record | Snapshot of the round: total bet, `IReadOnlyList<HandResult>`, dealer cards, dealer total, net amount, new bankroll (`null` if unlimited). Contains no mutable `Hand` objects. |
+| `RoundResult` | record | Snapshot of the round: total bet, `IReadOnlyList<HandResult>`, dealer cards, dealer total, net amount, new bankroll (`null` if unlimited); since E12 insurance bet and insurance net. Contains no mutable `Hand` objects. |
 
 ### 3.4 Player interface
 
@@ -185,6 +186,8 @@ public interface IPlayerStrategy
     /// <returns>The bet, or <c>null</c> to leave the table.</returns>
     Task<decimal?> GetBetAsync(BetContext context, CancellationToken ct = default);
     Task<PlayerAction> DecideAsync(DecisionContext context, CancellationToken ct = default);
+    // Since E12; the default declines.
+    Task<bool> DecideInsuranceAsync(InsuranceContext context, CancellationToken ct = default) => Task.FromResult(false);
 }
 
 /// <param name="Bankroll">Current bankroll, or <c>null</c> if unlimited.</param>
@@ -218,6 +221,7 @@ public sealed record DecisionContext(
 | `RoundStarted` | bet, bankroll (`null` if unlimited) |
 | `CardDealt` | recipient (player hand index / dealer), card (`null` when dealt face down), face-up flag |
 | `HoleCardRevealed` | card |
+| `InsuranceSettled` | insurance bet, net amount – since E12, only if insurance was taken (see E12) |
 | `PlayerHandFinished` | hand index, total, soft flag, Blackjack flag, bust flag – sent when the player's turn for that hand ends |
 | `HandSettled` | hand index, outcome, net amount – sent during settlement |
 | `RoundCompleted` | `RoundResult` |
@@ -600,7 +604,7 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - When a session ends with at least one completed round, the GUI and the console app write three files into the directory `log` below the current working directory (created if missing; ignored by git; for the macOS app see E3):
   - `blackjack_<yyyy-MM-dd_HH-mm-ss>.txt` – readable report: header (start/end time, rules), session statistics, then the list of all rounds (one line per hand, bet, cards with totals, dealer cards, result, net, bankroll after the round).
   - `blackjack_<…>_statistics.csv` – the statistics as `Metric,Value` rows.
-  - `blackjack_<…>_rounds.csv` – one row per hand: `Round,Time,Hand,Bet,PlayerCards,PlayerTotal,Doubled,FromSplit,DealerCards,DealerTotal,Outcome,Net,BankrollAfter`.
+  - `blackjack_<…>_rounds.csv` – one row per hand: `Round,Time,Hand,Bet,PlayerCards,PlayerTotal,Doubled,FromSplit,DealerCards,DealerTotal,Outcome,Net,BankrollAfter` (since E12 also `InsuranceBet,InsuranceNet`).
   - CSV files are UTF-8 with BOM (card symbols), invariant culture; the timestamp is the session start in local time.
 - Session end: GUI – Leave table, bankroll below the minimum bet, closing the window; console – quit, bankroll below the minimum bet, end of input, Ctrl+C. Aborted rounds are not included. Files are written once per session.
 - The path of the text file is shown (GUI status line, console after the summary). If writing fails, an error message is shown and the program continues.
@@ -654,7 +658,7 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
   1. `BLACKJACK PAYS 3 TO 2` in large letters,
   2. `Dealer Must Stand on Soft 17` in smaller letters,
   3. a banner (curved band with folded ends, gold outline) with `Insurance Pays 2 to 1` in small capitals.
-- Texts 1 and 2 follow the rules: the payout as the smallest fraction (1.5 → `3 TO 2`, 1.2 → `6 TO 5`), `Must Hit` for H17. Text 3 is fixed: Insurance is a planned feature (still in section 9 for now); the print is shown already.
+- Texts 1 and 2 follow the rules: the payout as the smallest fraction (1.5 → `3 TO 2`, 1.2 → `6 TO 5`), `Must Hit` for H17. Text 3 is fixed; insurance is offered since E12.
 - The player hands sit at the bottom of the table area (above the buttons), so the print stays visible between them and the dealer; split hands that wrap into a second row may cover it.
 - Serif font, cream colour, slightly transparent; drawn by a control of the GUI (letters placed one by one along the arc; no package).
 - Tests (ViewModel): texts for 3:2 and 6:5, S17 and H17.
@@ -749,9 +753,24 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Strategy hints are the first Pro feature: the GUI has one central switch `ProFeatures.IsUnlocked` (always `true` until a license check exists). While locked, no hints are given and the dialog hides the setting.
 - Tests: Show (the action and its button, only allowed actions, each hand after a split, hint gone after the decision), Off, Feedback (deviation reported until the next Deal, nothing after the basic strategy action, the last deviation of a round, keyboard), situation and feedback texts, setting saved/applied/default/not offered, dialog. The table tests of 6.2 and 7.6 move to `Blackjack.Core.Tests`.
 
+### E12 – Insurance and even money
+
+Lifts the non-goal "Insurance, Even Money" of section 9 (Surrender stays a non-goal).
+
+- **Rule:** if the dealer's upcard is an Ace, the player is offered insurance after the deal and before the peek. The insurance bet is always **half the bet** (no partial insurance). It pays **2:1** if the dealer has Blackjack (+2 × insurance) and is lost otherwise (−insurance); the round then goes on as before. No offer on a ten-valued upcard.
+- Offered only if the bankroll covers the bet plus the insurance (always with an unlimited bankroll). A lost insurance is not available for Double and Split (7.2: the insurance counts as already placed).
+- **Even money:** with a player Blackjack, insurance wins +1 × bet either way at 3:2 (dealer Blackjack: push + 2 × ½ bet; otherwise 1.5 × bet − ½ bet), which is the even money of real tables. It is offered under that name only at 3:2; at 6:5 the player is asked the normal insurance question (it would win only +0.7 × bet).
+- **Engine:** `IPlayerStrategy.DecideInsuranceAsync(InsuranceContext)` (player cards, total, Blackjack flag, upcard, amount) with a default that declines, so existing strategies need no change. The insurance is settled when the dealer peeks: `InsuranceSettled` (bet, net) comes after `HoleCardRevealed` on a dealer Blackjack, otherwise before the player's turn (on a player Blackjack before `PlayerHandFinished`). `RoundResult` gets `InsuranceBet` and `InsuranceNet` (trailing parameters, default 0); `Net` includes the insurance, `TotalBet` and `InitialBet` do not, so the house edge (7.7) keeps its meaning. Cancellation during the offer restores the bankroll (2.5).
+- **Simulation:** all automated players decline (basic strategy), so no card is drawn differently and the results are unchanged (`basic`, seed 11, 20 million rounds: 0.41 %).
+- **Statistics and reports (E2):** `SessionStatistics` counts `Insurances`, `InsurancesWon` and `InsuranceNet`. The text report has the line `Insurance  n   (won w, net ±x)` and a row `Insurance` below the hands of a round with insurance (bet, `Insurance wins` / `Insurance lost`, net); the statistics CSV has `Insurances`, `InsurancesWon`, `InsuranceNet`; the rounds CSV gets the columns `InsuranceBet,InsuranceNet`, filled in the row of the first hand only.
+- **Console:** `The dealer shows an Ace. Insurance for 5? (y/n): ` or `You have Blackjack, the dealer shows an Ace. Even money (+10 now)? (y/n): `; other input is asked again, the end of the input declines. The table shows `Insurance wins +10.` / `Insurance lost -5.` at the peek and a line `Insurance wins  +10` in the result.
+- **GUI:** an insurance box on the felt between the dealer's and the player's cards (not a separate window, so the cards stay visible): "Dealer shows an Ace.", the question (`Insurance for 5?` / `You have Blackjack. Take even money: +10 now?`), what it pays, and the buttons `Insurance` / `No insurance` (`Even money` / `No`). While it is open the table waits in the phase Insurance and every other button is disabled. **No keys** answer the box (Enter, Space, Esc and the shortcuts of E10 do nothing). The player hand shows `Insurance 5`, after the peek `Insurance wins +10` / `Insurance lost -5`; the result of a one-hand round adds ` · Insurance ±x`.
+- **Strategy hints (E11):** Show – the box shows `Basic strategy: No insurance` (`No even money`) and the decline button has the gold border; Feedback – taking it reports `Basic strategy: No insurance – you took insurance` (`… even money – you took even money`). Index plays by the count follow with the count trainer.
+- Tests: offer only on an Ace and only if covered, unlimited bankroll, lost and won insurance, even money both ways, notification order, Double after a lost insurance, default declines, cancellation, statistics, reports, console question and output, GUI box (texts, disabled buttons, no keys, results, 6:5, next round), hints, simulation players decline.
+
 ## 9. Non-goals (not part of any current milestone)
 
-- Insurance, Surrender, Even Money
+- Surrender (Insurance and Even Money since E12)
 - No-peek (ENHC) as an active option (only prepared via `Rules.DealerPeeks`)
 - Multiple players / seats at one table
 - Network play, user accounts, real money; no persistence beyond the settings file of E9

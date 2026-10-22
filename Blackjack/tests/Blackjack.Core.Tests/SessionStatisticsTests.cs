@@ -6,6 +6,21 @@ namespace Blackjack.Core.Tests;
 public sealed class SessionStatisticsTests
 {
     [Fact]
+    public void CountsTheInsurances()
+    {
+        var statistics = new SessionStatistics();
+
+        statistics.Record(Result(HandOutcome.Loss, -15m) with { InsuranceBet = 5m, InsuranceNet = -5m });
+        statistics.Record(Result(HandOutcome.DealerBlackjack, 0m) with { InsuranceBet = 5m, InsuranceNet = 10m });
+        statistics.Record(Result(HandOutcome.Win, 10m));
+
+        Assert.Equal(2, statistics.Insurances);
+        Assert.Equal(1, statistics.InsurancesWon);
+        Assert.Equal(5m, statistics.InsuranceNet);
+        Assert.Equal(-5m, statistics.Net);
+    }
+
+    [Fact]
     public void CountsOutcomesAndNet()
     {
         var statistics = new SessionStatistics();
