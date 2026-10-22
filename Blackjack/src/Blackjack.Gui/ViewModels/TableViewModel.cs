@@ -243,6 +243,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     /// <summary>Whether the count is shown (count trainer Show count).</summary>
     public bool IsCountShown => ActiveCountTrainer == CountTrainerMode.ShowCount;
 
+    /// <summary>Whether the counting help can be opened (spec E14): while the count or the count quiz is shown.</summary>
+    public bool CanOpenCountingHelp => IsCountShown || IsQuizOpen;
+
     /// <summary>The running count, e.g. <c>Running count: +4</c>.</summary>
     public string RunningCountText => $"Running count: {DisplayText.Count(_counter.RunningCount)}";
 

@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window, ICardAnimator
     private const double TurnStart = 0.55;
 
     private bool _settingsOpen;
+    private CountingHelpWindow? _countingHelp;
 
     /// <summary>Creates the window.</summary>
     public MainWindow()
@@ -86,6 +87,32 @@ public sealed partial class MainWindow : Window, ICardAnimator
         {
             Focus();
         }
+    }
+
+    private void OnCountPressed(object? sender, PointerPressedEventArgs e) => OpenCountingHelp();
+
+    private void OnCountingHelpClick(object? sender, RoutedEventArgs e) => OpenCountingHelp();
+
+    /// <summary>
+    /// Shows the counting help (spec E14) while the count or the count quiz is shown. The window is not modal; if it
+    /// is open already, it comes to the front.
+    /// </summary>
+    public void OpenCountingHelp()
+    {
+        if (DataContext is not TableViewModel { CanOpenCountingHelp: true })
+        {
+            return;
+        }
+
+        if (_countingHelp is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        _countingHelp = new CountingHelpWindow { DataContext = new CountingHelpViewModel() };
+        _countingHelp.Closed += (_, _) => _countingHelp = null;
+        _countingHelp.Show(this);
     }
 
     /// <summary>

@@ -1,0 +1,139 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Blackjack.Gui.ViewModels"
+        x:Class="Blackjack.Gui.Views.CountingHelpWindow"
+        x:DataType="vm:CountingHelpViewModel"
+        Title="Counting help"
+        Width="700" Height="780" MinWidth="560" MinHeight="400" WindowStartupLocation="CenterOwner"
+        Background="#0f3d22">
+
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+        <Style Selector="TextBlock.heading">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#ffe08a" />
+            <Setter Property="Margin" Value="0,10,0,0" />
+        </Style>
+        <Style Selector="TextBlock.th">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#cfe8ff" />
+        </Style>
+        <Style Selector="Border.table">
+            <Setter Property="Background" Value="#102a1a" />
+            <Setter Property="BorderBrush" Value="#d4af37" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="MinWidth" Value="90" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <Button DockPanel.Dock="Bottom" Content="Close" Click="OnClose" HorizontalAlignment="Right" Margin="28,12" />
+        <ScrollViewer>
+            <StackPanel Margin="28,20,28,8" Spacing="8">
+                <TextBlock Classes="heading" Margin="0" Text="How to count cards (Hi-Lo)" FontSize="22" />
+
+                <TextBlock Classes="heading" Text="1. The idea" />
+                <TextBlock Text="Card counting keeps track of the cards that have left the shoe. When many low cards are gone, the rest of the shoe is rich in tens and Aces: Blackjacks (paid 3:2) come more often, the dealer busts more often and doubling down wins more. Then the count is high and you bet more; when it is low you bet the minimum." />
+                <TextBlock Opacity="0.75" Text="Counting in your head is legal, but a casino may refuse to let a counter play. This trainer is for practice only." />
+
+                <TextBlock Classes="heading" Text="2. Card values" />
+                <TextBlock Text="Every card has a count value:" />
+                <Border Classes="table">
+                    <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="140,60">
+                            <TextBlock Classes="th" Text="Cards" />
+                            <TextBlock Classes="th" Grid.Column="1" Text="Count" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding CardValues}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HelpCardValue">
+                                    <Grid ColumnDefinitions="140,60">
+                                        <TextBlock Text="{Binding Cards}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="A full deck adds up to 0: twenty cards count +1, twelve count 0 and twenty count −1." />
+
+                <TextBlock Classes="heading" Text="3. The running count" />
+                <TextBlock Text="• Start at 0 when the shoe is shuffled (here also with New game, Leave table and changed rules)." />
+                <TextBlock Text="• Add the value of every card you see: your cards, the dealer's upcard, every card drawn, also those of split hands." />
+                <TextBlock Text="• The dealer's hole card counts only when it is turned over." />
+                <TextBlock Text="• Keep the count from round to round until the next shuffle; it does not start again with each round." />
+                <TextBlock Text="• To count faster, cancel pairs at a glance: a King and a 5 together are 0. Count only what is left." />
+
+                <TextBlock Classes="heading" Text="4. The true count" />
+                <TextBlock Text="The same running count means more when fewer cards are left. Divide the running count by the decks left in the shoe: a running count of +6 with 3 decks left is a true count of +2; with 1.5 decks left it is +4." />
+                <TextBlock Text="In a casino you estimate the decks left from the discard tray. Here the line &quot;Decks left&quot; shows them, and the app calculates the true count exactly, without rounding." />
+
+                <TextBlock Classes="heading" Text="5. Betting with the count" />
+                <TextBlock Text="One unit is the minimum bet. Raise the bet as the true count rises (the line &quot;Count bet&quot; shows the bet for the current count):" />
+                <Border Classes="table">
+                    <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="180,80">
+                            <TextBlock Classes="th" Text="True count" />
+                            <TextBlock Classes="th" Grid.Column="1" Text="Bet" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding BetSpread}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HelpBetRow">
+                                    <Grid ColumnDefinitions="180,80">
+                                        <TextBlock Text="{Binding TrueCount}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Bet}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Classes="heading" Text="6. Playing with the count" />
+                <TextBlock Text="At most counts you play basic strategy. These 18 plays (the &quot;Illustrious 18&quot;) change at a certain true count (TC): with hard 16 against a 10, for example, stand instead of hitting when the true count is 0 or higher. A play counts only where basic strategy makes its basic move (8,8 against a 10 is still split). With strategy hints on, the hint on the table says &quot;Count play: …&quot;." />
+                <Border Classes="table">
+                    <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="100,70,80,100,90">
+                            <TextBlock Classes="th" Text="Hand" />
+                            <TextBlock Classes="th" Grid.Column="1" Text="Dealer" />
+                            <TextBlock Classes="th" Grid.Column="2" Text="Basic" />
+                            <TextBlock Classes="th" Grid.Column="3" Text="Count play" />
+                            <TextBlock Classes="th" Grid.Column="4" Text="When" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding IndexPlays}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HelpIndexPlay">
+                                    <Grid ColumnDefinitions="100,70,80,100,90">
+                                        <TextBlock Text="{Binding Hand}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Dealer}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Basic}" />
+                                        <TextBlock Grid.Column="3" Text="{Binding CountPlay}" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="4" Text="{Binding When}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Classes="heading" Text="7. Practising here" />
+                <TextBlock Text="• Settings… › Count trainer › &quot;Show the count&quot;: the count is shown above the bet area and changes with every card. Count along and compare." />
+                <TextBlock Text="• &quot;Quiz me on the count&quot;: the count is hidden; after every 5th round and at the end of the shoe you are asked for the running count." />
+                <TextBlock Text="• Away from the table: count down a shuffled deck card by card. You must end at 0; aim for less than 30 seconds per deck." />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

@@ -790,10 +790,24 @@ Lifts the non-goal "Card counting strategies" of section 9. The values follow th
 
   - The count belongs to the shoe: it starts at 0 with every new shoe (shuffle, New game, Leave table, changed rules).
   - **Count hints** (Show count with strategy hints on): `Count play: Stand (hard 16 vs 10, true count +0.4 ≥ 0)`, feedback `Count play: Stand – you hit (…)`; in the insurance box `Count play: Insurance (true count +3.2 ≥ +3)` with the gold border on the take button, feedback `Count play: Insurance – you declined (…)`. Without an index play the hint stays `Basic strategy: …`. In the quiz mode the hints stay basic strategy, so they do not give the count away.
-  - **Quiz box** at the place of the insurance box: "Count quiz", `What is the running count?` (at the end of the shoe `End of the shoe: what was the running count before the shuffle?`), the Hi-Lo values, an answer field (`+4`, `4`, `-3`, `−3`) and the button Check; Enter in the field checks. A text that is no whole number is asked again ("Please enter a whole number, e.g. +4 or -3."). The result starts the status line: `Count quiz: correct, the running count is -5.` or `Count quiz: the running count is -5, you said +2.` While the box is open, chips, Deal, Leave table and Settings wait; the field takes the keys (digits are no chip shortcuts there) and gives the focus back afterwards. Answers are counted per program run (`QuizAnswered`, `QuizCorrect`; statistics follow with E14).
+  - **Quiz box** at the place of the insurance box: "Count quiz", `What is the running count?` (at the end of the shoe `End of the shoe: what was the running count before the shuffle?`), the Hi-Lo values, an answer field (`+4`, `4`, `-3`, `−3`) and the button Check; Enter in the field checks. A text that is no whole number is asked again ("Please enter a whole number, e.g. +4 or -3."). The result starts the status line: `Count quiz: correct, the running count is -5.` or `Count quiz: the running count is -5, you said +2.` While the box is open, chips, Deal, Leave table and Settings wait; the field takes the keys (digits are no chip shortcuts there) and gives the focus back afterwards. Answers are counted per program run (`QuizAnswered`, `QuizCorrect`; statistics follow with E15).
   - Placed above the bet area rather than in the header (the header has no room left).
 - The console app has no count trainer.
 - Tests: card values, hole card counted only when revealed, reset on shuffle, true count, every index play just before and at its index, insurance index, fallback to basic strategy, split pair, three-card hand, soft hand, bet spread and limit; `hilo` reproducible, limits 1–8 units, plausible player edge, spread; GUI count display, new count with a new shoe and a shuffle, hidden in Off and Quiz, count hints in Show and Feedback, insurance by the count, quiz every 5th round and at the end of the shoe, correct, wrong and invalid answers, no chip keys while open, only in quiz mode, setting saved/applied/default/dialog.
+
+### E14 – Counting help (GUI)
+
+- A click on the count above the bet area (count trainer "Show the count"; hand cursor, tooltip `How to count – click for help`) or on the link `How to count?` in the count quiz box opens the window **Counting help**. It is not modal, can be opened during a round and does not change the game; a second click brings the open window to the front. Without the count trainer there is no count to click (a Pro feature like E13).
+- Content (English, scrollable, button Close): 1. the idea (and that the trainer is for practice only), 2. card values, 3. the running count (start at 0 with a new shoe, every visible card, the hole card when turned over, kept across rounds, cancelling pairs), 4. the true count (running count ÷ decks left, example +6 / 3 decks = +2), 5. betting with the count, 6. playing with the count (the Illustrious 18), 7. practising here (Show the count, Quiz, counting down a deck to 0).
+- The tables are built from the Core code (`HiLoCounter.Value`, `CountingStrategy.BetUnits`, `CountingStrategy.IndexPlays`, `InsuranceIndex`), so they always match the trainer:
+
+  | Table | Rows |
+  |---|---|
+  | Card values | `2 3 4 5 6` +1, `7 8 9` 0, `10 J Q K A` -1 |
+  | Bet spread | `below +2` 1 unit, `+2 to below +3` 2 units, `+3 to below +4` 4 units, `+4 to below +5` 6 units, `+5 and above` 8 units |
+  | Count plays | Hand, Dealer, Basic, Count play, When: first `Insurance`, `A`, `No`, `Take`, `TC ≥ +3`, then the 17 index plays of E13 in their order, e.g. `Hard 16`, `10`, `Hit`, `Stand`, `TC ≥ 0`; `10,10`, `5`, `Stand`, `Split`, `TC ≥ +5`; `Hard 13`, `2`, `Stand`, `Hit`, `TC < -1` |
+
+- Tests: the three tables against the Core values, the row texts, the help can be opened with the count shown and with the quiz open, not with the count trainer off or the quiz closed. The window itself is checked by hand.
 
 ## 9. Non-goals (not part of any current milestone)
 

@@ -71,6 +71,18 @@
             <Setter Property="Foreground" Value="#ffb36b" />
         </Style>
         <!-- Chips in the tray and stacks in the bet area: the chip graphic is the whole button. -->
+        <!-- A text link, e.g. "How to count?" in the count quiz (spec E14). -->
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#cfe8ff" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#ffe08a" />
+        </Style>
         <Style Selector="Button.chip, Button.stack">
             <Setter Property="MinWidth" Value="0" />
             <Setter Property="Padding" Value="0" />
@@ -221,8 +233,12 @@
 
             <!-- Left column, bet area: one row per chip value; clicking a stack takes one chip back. -->
             <!-- The Hi-Lo count (spec E13, count trainer "Show the count"), above the bet area. -->
+            <!-- A click opens the counting help (spec E14). -->
+            <!-- A fixed width: the Auto column does not measure the panel again when a count gets longer (+9 → +10), which
+                 cut off its digits. -->
             <StackPanel Grid.Row="1" IsVisible="{Binding IsCountShown}" HorizontalAlignment="Center" VerticalAlignment="Top"
-                        Spacing="2" ToolTip.Tip="Hi-Lo: 2–6 count +1, 7–9 count 0, 10–A count −1. The true count is the running count per deck left.">
+                        Width="250" Spacing="2" Background="Transparent" Cursor="Hand" PointerPressed="OnCountPressed"
+                        ToolTip.Tip="How to count – click for help">
                 <TextBlock Text="{Binding RunningCountText}" FontSize="17" FontWeight="SemiBold" Foreground="#ffe08a" />
                 <TextBlock Text="{Binding TrueCountText}" FontSize="15" />
                 <TextBlock Text="{Binding DecksLeftText}" FontSize="13" Opacity="0.8" />
@@ -317,6 +333,7 @@
                             <TextBlock Text="Count quiz" FontSize="14" Opacity="0.85" />
                             <TextBlock Text="{Binding QuizQuestion}" FontSize="19" FontWeight="SemiBold" Foreground="#ffe08a" />
                             <TextBlock Text="Hi-Lo: 2–6 count +1, 7–9 count 0, 10–A count −1." FontSize="13" Opacity="0.75" />
+                            <Button Classes="link" Content="How to count?" Click="OnCountingHelpClick" />
                             <TextBlock Classes="hint mistake" Text="{Binding QuizError}"
                                        IsVisible="{Binding QuizError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>

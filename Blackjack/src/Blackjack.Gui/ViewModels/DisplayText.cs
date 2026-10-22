@@ -94,7 +94,10 @@ public static class DisplayText
 
     /// <summary>The index condition of a count play, e.g. <c>true count +0.4 ≥ 0</c> or <c>true count -1.5 &lt; -1</c>.</summary>
     public static string IndexCondition(decimal trueCount, decimal index, bool atOrAbove) =>
-        $"true count {TrueCount(trueCount)} {(atOrAbove ? "≥" : "<")} {index.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture)}";
+        $"true count {TrueCount(trueCount)} {(atOrAbove ? "≥" : "<")} {Index(index)}";
+
+    /// <summary>The index of a count play, e.g. <c>+4</c>, <c>0</c>, <c>-1</c>.</summary>
+    public static string Index(decimal index) => index.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture);
 
     /// <summary>The hint for an index play, e.g. <c>Count play: Stand (hard 16 vs 10, true count +0.4 ≥ 0)</c>.</summary>
     public static string CountHint(IndexPlay play, DecisionContext context, decimal trueCount)

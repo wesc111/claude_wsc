@@ -5,7 +5,7 @@
     <RootNamespace>Blackjack.Gui</RootNamespace>
     <AssemblyName>BlackjackGui</AssemblyName>
     <!-- Shown in the app bundle (Info.plist) and the DMG name; see scripts/make-macos-app.sh. -->
-    <Version>1.9.0</Version>
+    <Version>1.10.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
