@@ -9,12 +9,12 @@ internal sealed record SimulationOptions
     /// <summary>The usage text shown for <c>--help</c> and after an invalid argument.</summary>
     public const string Usage =
         """
-        Usage: blackjack-sim --strategy <basic|basic-hs|mimic|neverbust> [options]
+        Usage: blackjack-sim --strategy <basic|basic-hs|mimic|neverbust|hilo> [options]
 
-          --strategy <name>       basic, basic-hs, mimic or neverbust (required)
+          --strategy <name>       basic, basic-hs, mimic, neverbust or hilo (required)
           --rounds <number>       Number of rounds (default 1,000,000)
           --seed <number>         Seed for reproducible results (default: random, printed)
-          --bet <amount>          Flat bet per round (default 10)
+          --bet <amount>          Flat bet per round; for hilo one unit of the 1–8 spread (default 10)
           --workers <number>      Parallel workers (default: number of CPU cores)
           --csv <file>            Also write the statistics as CSV
           --decks <1-8>           Number of decks (default 6)
@@ -57,7 +57,7 @@ internal sealed record SimulationOptions
     /// <summary>True if <c>--help</c> was given.</summary>
     public bool ShowHelp { get; init; }
 
-    /// <summary>The table rules for these options; the bet limits equal the flat bet.</summary>
+    /// <summary>The table rules for these options; the bet limits equal the flat bet, for <c>hilo</c> 1–8 units.</summary>
     public Rules CreateRules() => new()
     {
         Decks = Decks,
@@ -65,7 +65,7 @@ internal sealed record SimulationOptions
         DealerHitsSoft17 = DealerHitsSoft17,
         BlackjackPayout = Payout,
         MinBet = Bet,
-        MaxBet = Bet,
+        MaxBet = Strategy == "hilo" ? Bet * PlayerFactory.HiLoMaxUnits : Bet,
     };
 
     /// <summary>Parses the arguments. Accepts <c>--name value</c> and <c>--name=value</c>.</summary>

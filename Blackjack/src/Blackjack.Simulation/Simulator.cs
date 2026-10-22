@@ -58,8 +58,11 @@ internal static class Simulator
     private static async Task<SimulationStatistics> RunWorkerAsync(
         SimulationOptions options, Rules rules, int seed, long rounds, CancellationToken ct)
     {
-        var game = new BlackjackGame(rules, new Shoe(rules, seed), startingBankroll: null);
-        var player = PlayerFactory.Create(options.Strategy, options.Bet, rules);
+        var shoe = new Shoe(rules, seed);
+        var player = PlayerFactory.Create(options.Strategy, options.Bet, rules, shoe);
+
+        // A counting player sees every card as an observer.
+        var game = new BlackjackGame(rules, shoe, startingBankroll: null, player is IGameObserver observer ? [observer] : null);
         var statistics = new SimulationStatistics();
         for (long round = 0; round < rounds; round++)
         {

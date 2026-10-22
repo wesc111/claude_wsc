@@ -172,6 +172,7 @@ Blackjack.slnx
 | `HandOutcome` | enum | `BlackjackWin`, `Win`, `DealerBust`, `Push`, `Loss`, `PlayerBust`, `DealerBlackjack`; extension methods `IsWin()`, `IsLoss()` |
 | `DealerStrategy` | class | Decides dealer Hit/Stand according to `Rules` |
 | `BasicStrategyTable`, `StrategyCode` | class, enum | The basic strategy tables of 6.2 and 7.6 as data, `Decide(DecisionContext)`; in Core since E11 (before: Simulation), so the GUI can give strategy hints |
+| `HiLoCounter`, `CountingStrategy`, `IndexPlay` | class, static class, record | Since E13: the Hi-Lo count as an observer, the Illustrious 18 and the bet spread (see E13) |
 | `BlackjackGame` | class | Engine: runs a round, peek, settlement, bankroll |
 | `IPlayerStrategy` | interface | Bet and action decisions |
 | `IGameObserver` | interface | Async notifications about the course of a round (see 3.5) |
@@ -383,6 +384,7 @@ With `DealerHitsSoft17 = true` (H17):
 | `BasicStrategyPlayer` | Hit/Stand table depending on player total, soft/hard and dealer upcard (see 6.2); flat bet |
 | `MimicDealerPlayer` | Plays like the dealer: hit ≤ 16, stand ≥ 17 (uses Core's `DealerStrategy`, so it also follows H17 when that rule is set) |
 | `NeverBustPlayer` | Hard hands: stands on 12+, otherwise hits. Soft hands: hits up to soft 17, stands on soft 18+ |
+| `HiLoPlayer` | Since E13: counts Hi-Lo, plays basic strategy with the Illustrious 18 and bets 1–8 units by the true count (strategy `hilo`, see E13) |
 
 Strategies always use a fixed bet (configurable).
 
@@ -425,7 +427,7 @@ The table must be stored as data (e.g. a 2-D array or JSON file) so it can later
 | Total wagered | sum of all bets |
 | Net result | sum of all net payouts |
 | House edge | −net result / sum of initial bets, in % (from M4, see 7.7; identical to −net / total wagered without Double and Split) |
-| Standard error, 95 % CI | of the per-round result (in % of bet) |
+| Standard error, 95 % CI | of the per-round result (in % of bet); since E13 the standard error of the ratio net / initial bets, which is the same for a flat bet and correct for the bet spread of `hilo` |
 | Win / loss / push rates | in % of rounds |
 | Blackjack rate | player Blackjacks in % of rounds |
 | Bust rates | player: in % of rounds; dealer: in % of the rounds in which the dealer played out the hand (player not bust, no Blackjack on either side) |
@@ -768,13 +770,37 @@ Lifts the non-goal "Insurance, Even Money" of section 9 (Surrender stays a non-g
 - **Strategy hints (E11):** Show – the box shows `Basic strategy: No insurance` (`No even money`) and the decline button has the gold border; Feedback – taking it reports `Basic strategy: No insurance – you took insurance` (`… even money – you took even money`). Index plays by the count follow with the count trainer.
 - Tests: offer only on an Ace and only if covered, unlimited bankroll, lost and won insurance, even money both ways, notification order, Double after a lost insurance, default declines, cancellation, statistics, reports, console question and output, GUI box (texts, disabled buttons, no keys, results, 6:5, next round), hints, simulation players decline.
 
+### E13 – Count trainer (Hi-Lo)
+
+Lifts the non-goal "Card counting strategies" of section 9. The values follow the common Hi-Lo literature (`docs/BasicStrategyCardCounting.md` of the author, not part of the repository).
+
+- **Core (no UI, no I/O):**
+  - `HiLoCounter` is an `IGameObserver` for the shoe of a game: 2–6 = +1, 7–9 = 0, 10–A = −1. It counts every face-up card and the hole card when it is revealed, and starts again at 0 on `ShoeShuffled`. `RunningCount`, `DecksRemaining` = cards left in the shoe / 52 (the face-down hole card counts as dealt), `TrueCount` = running count / decks remaining, **exact** (not rounded; with an empty shoe the running count). The engine is unchanged.
+  - `CountingStrategy` holds the **Illustrious 18** as data (`IndexPlay`: hard total or pair, upcard, basic action, deviation, index, ≥ or <), with the common multi-deck S17 indices: insurance ≥ +3; 16 v 10 stand ≥ 0; 15 v 10 stand ≥ +4; 10,10 v 5 split ≥ +5; 10,10 v 6 split ≥ +4; 10 v 10 double ≥ +4; 12 v 3 stand ≥ +2; 12 v 2 stand ≥ +3; 11 v A double ≥ +1; 9 v 2 double ≥ +1; 10 v A double ≥ +4; 9 v 7 double ≥ +3; 16 v 9 stand ≥ +5; 13 v 2 hit < −1; 12 v 4 hit < 0; 12 v 5 hit < −2; 12 v 6 hit < −1; 13 v 3 hit < −2. The exact true count is compared with the index.
+  - A play applies to hard totals (any number of cards) and to the pair 10,10, only where basic strategy (7.6) chooses its basic action (so 8,8 v 10 is still split) and only if the deviation is allowed now; otherwise basic strategy decides.
+  - Bet spread 1–8 units: true count below +2: 1, below +3: 2, below +4: 4, below +5: 6, else 8; one unit = the minimum bet, limited to the largest valid bet.
+- **Simulation:** strategy `hilo` (`HiLoPlayer`, registered as observer of its game); the table limits are 1–8 × `--bet`. Reference values with 2 × 20 million rounds (seeds 11 and 12, defaults, 75 % penetration): house edge **−0.49 % / −0.45 %** (a player edge, SE 0.04 %), average bet ≈ 1.46 units. Plausibility test (10 million rounds): between −1.0 % and −0.1 %. The standard error of all strategies is now that of the ratio net / initial bets (see 6.4); the values of the flat-bet strategies are unchanged.
+- **GUI**, new setting "Count trainer" in the Options group of the settings dialog (saved, default Off, a value not offered falls back to Off; a Pro feature like E11):
+
+  | Mode | Behaviour |
+  |---|---|
+  | Off ("Off") | no count |
+  | Show count ("Show the count") | above the bet area: `Running count: +4`, `True count: +1.3`, `Decks left: 3.1`, `Count bet: 2 units = 20`, updated with every card; strategy hints (E11) include the index plays |
+  | Quiz ("Quiz me on the count") | the count is hidden; after every 5th round of a shoe and after the last round before a reshuffle the player is asked for the running count before the next bet |
+
+  - The count belongs to the shoe: it starts at 0 with every new shoe (shuffle, New game, Leave table, changed rules).
+  - **Count hints** (Show count with strategy hints on): `Count play: Stand (hard 16 vs 10, true count +0.4 ≥ 0)`, feedback `Count play: Stand – you hit (…)`; in the insurance box `Count play: Insurance (true count +3.2 ≥ +3)` with the gold border on the take button, feedback `Count play: Insurance – you declined (…)`. Without an index play the hint stays `Basic strategy: …`. In the quiz mode the hints stay basic strategy, so they do not give the count away.
+  - **Quiz box** at the place of the insurance box: "Count quiz", `What is the running count?` (at the end of the shoe `End of the shoe: what was the running count before the shuffle?`), the Hi-Lo values, an answer field (`+4`, `4`, `-3`, `−3`) and the button Check; Enter in the field checks. A text that is no whole number is asked again ("Please enter a whole number, e.g. +4 or -3."). The result starts the status line: `Count quiz: correct, the running count is -5.` or `Count quiz: the running count is -5, you said +2.` While the box is open, chips, Deal, Leave table and Settings wait; the field takes the keys (digits are no chip shortcuts there) and gives the focus back afterwards. Answers are counted per program run (`QuizAnswered`, `QuizCorrect`; statistics follow with E14).
+  - Placed above the bet area rather than in the header (the header has no room left).
+- The console app has no count trainer.
+- Tests: card values, hole card counted only when revealed, reset on shuffle, true count, every index play just before and at its index, insurance index, fallback to basic strategy, split pair, three-card hand, soft hand, bet spread and limit; `hilo` reproducible, limits 1–8 units, plausible player edge, spread; GUI count display, new count with a new shoe and a shuffle, hidden in Off and Quiz, count hints in Show and Feedback, insurance by the count, quiz every 5th round and at the end of the shoe, correct, wrong and invalid answers, no chip keys while open, only in quiz mode, setting saved/applied/default/dialog.
+
 ## 9. Non-goals (not part of any current milestone)
 
 - Surrender (Insurance and Even Money since E12)
 - No-peek (ENHC) as an active option (only prepared via `Rules.DealerPeeks`)
 - Multiple players / seats at one table
 - Network play, user accounts, real money; no persistence beyond the settings file of E9
-- Card counting strategies (prepared via `IGameObserver`)
 
 ---
 

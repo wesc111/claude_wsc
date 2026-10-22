@@ -86,6 +86,30 @@ public static class DisplayText
             : $"Insurance for {Money(offer.Amount)}?";
     }
 
+    /// <summary>A count with sign, e.g. <c>+4</c>, <c>0</c>, <c>-3</c> (spec E13).</summary>
+    public static string Count(int count) => count.ToString("+0;-0;0", CultureInfo.InvariantCulture);
+
+    /// <summary>A true count or index with sign and one decimal, e.g. <c>+1.3</c>, <c>0.0</c>, <c>-0.4</c>.</summary>
+    public static string TrueCount(decimal trueCount) => trueCount.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture);
+
+    /// <summary>The index condition of a count play, e.g. <c>true count +0.4 ≥ 0</c> or <c>true count -1.5 &lt; -1</c>.</summary>
+    public static string IndexCondition(decimal trueCount, decimal index, bool atOrAbove) =>
+        $"true count {TrueCount(trueCount)} {(atOrAbove ? "≥" : "<")} {index.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture)}";
+
+    /// <summary>The hint for an index play, e.g. <c>Count play: Stand (hard 16 vs 10, true count +0.4 ≥ 0)</c>.</summary>
+    public static string CountHint(IndexPlay play, DecisionContext context, decimal trueCount)
+    {
+        ArgumentNullException.ThrowIfNull(play);
+        return $"Count play: {play.Deviation} ({Situation(context)}, {IndexCondition(trueCount, play.Index, play.AtOrAbove)})";
+    }
+
+    /// <summary>The feedback when an index play was missed, e.g. <c>Count play: Stand – you hit (hard 16 vs 10, true count +0.4 ≥ 0)</c>.</summary>
+    public static string CountFeedback(IndexPlay play, PlayerAction chosen, DecisionContext context, decimal trueCount)
+    {
+        ArgumentNullException.ThrowIfNull(play);
+        return $"Count play: {play.Deviation} – {You(chosen)} ({Situation(context)}, {IndexCondition(trueCount, play.Index, play.AtOrAbove)})";
+    }
+
     /// <summary>The basic strategy hint on an insurance offer: always decline (spec E12).</summary>
     public static string InsuranceHint(bool evenMoney) => evenMoney ? "Basic strategy: No even money" : "Basic strategy: No insurance";
 
@@ -100,13 +124,14 @@ public static class DisplayText
     /// <summary>The feedback after a decision that differs from basic strategy, e.g. <c>Basic strategy: Double – you hit (hard 11 vs 6)</c>.</summary>
     public static string StrategyFeedback(PlayerAction recommended, PlayerAction chosen, DecisionContext context)
     {
-        var you = chosen switch
-        {
-            PlayerAction.Stand => "you stood",
-            PlayerAction.Double => "you doubled",
-            PlayerAction.Split => "you split",
-            _ => "you hit",
-        };
-        return $"Basic strategy: {recommended} – {you} ({Situation(context)})";
+        return $"Basic strategy: {recommended} – {You(chosen)} ({Situation(context)})";
     }
+
+    private static string You(PlayerAction chosen) => chosen switch
+    {
+        PlayerAction.Stand => "you stood",
+        PlayerAction.Double => "you doubled",
+        PlayerAction.Split => "you split",
+        _ => "you hit",
+    };
 }

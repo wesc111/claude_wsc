@@ -39,14 +39,53 @@ public sealed partial class MainWindow : Window, ICardAnimator
 
     private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
     {
-        // An open deck list keeps its own keys.
-        var comboBox = (e.Source as Visual)?.FindAncestorOfType<ComboBox>(includeSelf: true);
-        if (comboBox?.IsDropDownOpen == true || DataContext is not TableViewModel table)
+        // An open deck list keeps its own keys, and the answer field of the count quiz its digits.
+        var source = e.Source as Visual;
+        var comboBox = source?.FindAncestorOfType<ComboBox>(includeSelf: true);
+        if (comboBox?.IsDropDownOpen == true || source?.FindAncestorOfType<TextBox>(includeSelf: true) is not null
+            || DataContext is not TableViewModel table)
         {
             return;
         }
 
         e.Handled = KeyboardShortcuts.Handle(table, e.Key, e.KeyModifiers);
+    }
+
+    private void OnQuizKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && DataContext is TableViewModel table)
+        {
+            table.SubmitQuizCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (DataContext is TableViewModel table)
+        {
+            table.PropertyChanged += OnTablePropertyChanged;
+        }
+    }
+
+    // The quiz field gets the focus while the quiz is open and gives it back afterwards, so the shortcuts work again.
+    private void OnTablePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(TableViewModel.IsQuizOpen) || sender is not TableViewModel table)
+        {
+            return;
+        }
+
+        if (table.IsQuizOpen)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => QuizAnswer.Focus());
+        }
+        else
+        {
+            Focus();
+        }
     }
 
     /// <summary>

@@ -26,6 +26,20 @@ public sealed class StatisticsTests
     }
 
     [Fact]
+    public void WithABetSpreadTheStandardErrorIsThatOfTheRatio()
+    {
+        // Spec E13: bet 10 wins 10, bet 80 loses 80. Ratio R = −70 / 90; residuals n − R·b: 10 + 70/9, −80 + 560/9.
+        var s = new SimulationStatistics();
+        s.Record(Rounds.Create("10 9", "10 8", HandOutcome.Win, 10m, bet: 10m));
+        s.Record(Rounds.Create("10 7", "10 8", HandOutcome.Loss, -80m, bet: 80m));
+
+        var r = -70.0 / 90;
+        var residuals = Math.Pow(10 - (r * 10), 2) + Math.Pow(-80 - (r * 80), 2);
+        Assert.Equal(-r * 100, s.Total.HouseEdgePercent, 10);
+        Assert.Equal(Math.Sqrt(residuals * 2 / 1) / 90 * 100, s.Total.StandardErrorPercent, 10);
+    }
+
+    [Fact]
     public void StandardErrorAndConfidenceInterval()
     {
         // Per-round results +1, −1, −1, +1: mean 0, sample variance 4/3, SE = sqrt(4/3 / 4).

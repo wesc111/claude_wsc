@@ -83,6 +83,23 @@ public sealed class SimulatorTests
     }
 
     [Fact]
+    public void HiLoBetsOneToEightUnits() =>
+        Assert.Equal(80m, new SimulationOptions { Strategy = "hilo", Bet = 10m }.CreateRules().MaxBet);
+
+    [Fact]
+    public async Task HiLoIsReproducible()
+    {
+        var a = await Simulator.RunAsync(Options("hilo"), seed: 7, Ct);
+        var b = await Simulator.RunAsync(Options("hilo"), seed: 7, Ct);
+
+        StatisticsTests.AssertSame(a.Statistics.Total, b.Statistics.Total);
+    }
+
+    [Fact]
+    public void HiLoNeedsTheShoe() =>
+        Assert.Throws<ArgumentException>(() => Blackjack.Simulation.Players.PlayerFactory.Create("hilo", 10m, Rules.Default));
+
+    [Fact]
     public void CreateRulesUsesTheBetAsLimits()
     {
         var rules = new SimulationOptions { Bet = 25m, Decks = 2, DealerHitsSoft17 = true, Payout = 1.2m, Penetration = 0.5m }.CreateRules();

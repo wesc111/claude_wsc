@@ -71,6 +71,11 @@
             <ComboBox Grid.Column="1" ItemsSource="{Binding HintOptions}" SelectedItem="{Binding Hints}" />
         </Grid>
         <TextBlock Classes="note" Text="{Binding HintsNote}" IsVisible="{Binding AreHintsAvailable}" />
+        <Grid ColumnDefinitions="170,Auto" IsVisible="{Binding AreHintsAvailable}">
+            <TextBlock Text="Count trainer" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding CountTrainerOptions}" SelectedItem="{Binding CountTrainer}" />
+        </Grid>
+        <TextBlock Classes="note" Text="{Binding CountTrainerNote}" IsVisible="{Binding AreHintsAvailable}" />
 
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="Cancel" IsCancel="True" Click="OnCancel" />

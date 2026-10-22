@@ -28,7 +28,7 @@ public sealed class SettingsTests : IDisposable
         {
             Decks = 2, DealerHitsSoft17 = true, BlackjackPayout = 1.2m, Penetration = 0.67m, MinBet = 25m, MaxBet = 1000m,
             DoubleAfterSplit = false, ResplitAces = true, StartingBankroll = 5000m, Bankroll = 1234.5m, IsSoundOn = false,
-            Hints = HintMode.Feedback,
+            Hints = HintMode.Feedback, CountTrainer = CountTrainerMode.Quiz,
         };
 
         Assert.True(store.Save(settings));

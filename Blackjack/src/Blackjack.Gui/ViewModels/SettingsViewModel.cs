@@ -26,6 +26,7 @@ public sealed class SettingsViewModel
         StartingBankroll = Find(StartingBankrollOptions, settings.StartingBankroll);
         IsSoundOn = settings.IsSoundOn;
         Hints = Find(HintOptions, settings.Hints);
+        CountTrainer = Find(CountTrainerOptions, settings.CountTrainer);
         BankrollText = $"Current bankroll: {DisplayText.Money(bankroll)}";
         RulesNote = rulesApplyNow
             ? "Changed table rules apply at once."
@@ -64,7 +65,20 @@ public sealed class SettingsViewModel
         new(HintMode.Feedback, "Tell me when I deviate"),
     ];
 
-    /// <summary>Whether the strategy hints can be chosen (a Pro feature).</summary>
+    /// <summary>The count trainer (spec E13).</summary>
+    public IReadOnlyList<SettingOption<CountTrainerMode>> CountTrainerOptions { get; } =
+    [
+        new(CountTrainerMode.Off, "Off"),
+        new(CountTrainerMode.ShowCount, "Show the count"),
+        new(CountTrainerMode.Quiz, "Quiz me on the count"),
+    ];
+
+    /// <summary>How the count trainer works.</summary>
+    public string CountTrainerNote =>
+        "Hi-Lo count: 2–6 +1, 7–9 0, 10–A −1. It starts at 0 with every new shoe; Leave table ends the shoe. " +
+        "With the count shown, the hints include the Illustrious 18.";
+
+    /// <summary>Whether the strategy hints and the count trainer can be chosen (Pro features).</summary>
     public bool AreHintsAvailable => ProFeatures.IsUnlocked;
 
     /// <summary>The table the hints follow, also under other rules.</summary>
@@ -103,6 +117,9 @@ public sealed class SettingsViewModel
     /// <summary>The strategy hints.</summary>
     public SettingOption<HintMode> Hints { get; set; }
 
+    /// <summary>The count trainer.</summary>
+    public SettingOption<CountTrainerMode> CountTrainer { get; set; }
+
     /// <summary>The current bankroll, e.g. <c>Current bankroll: 1010</c>.</summary>
     public string BankrollText { get; }
 
@@ -123,6 +140,7 @@ public sealed class SettingsViewModel
         StartingBankroll = StartingBankroll.Value,
         IsSoundOn = IsSoundOn,
         Hints = Hints.Value,
+        CountTrainer = CountTrainer.Value,
     };
 
     /// <summary>The payout as a ratio, e.g. <c>3:2</c>.</summary>

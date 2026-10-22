@@ -32,6 +32,20 @@ public sealed class PlausibilityTests(PlausibilityFixture fixture) : IClassFixtu
     }
 
     [Fact]
+    public void HiLoCountingGivesThePlayerTheEdge() =>
+        // SPEC E13: reference −0.49 % / −0.45 % (2 × 20 million rounds); 10 million rounds: 95 % CI ≈ ±0.11 %.
+        Assert.InRange(Edge("hilo"), -1.0, -0.1);
+
+    [Fact]
+    public void HiLoSpreadsItsBets()
+    {
+        var total = fixture.Results["hilo"].Statistics.Total;
+
+        Assert.True(total.InitialBets > 10m * PlausibilityFixture.BasicRounds, "more than one unit on average");
+        Assert.True(total.InitialBets < 20m * PlausibilityFixture.BasicRounds, "mostly one unit");
+    }
+
+    [Fact]
     public void NeverBustHouseEdgeMatchesReference() =>
         Assert.InRange(Edge("neverbust"), 6.03 - 0.4, 6.03 + 0.4);
 

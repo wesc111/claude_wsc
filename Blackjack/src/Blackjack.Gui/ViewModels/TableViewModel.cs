@@ -56,6 +56,15 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private bool _isNoInsuranceRecommended;
     private bool _isEvenMoney;
     private string _insuranceQuestion = "";
+    private bool _isTakeInsuranceRecommended;
+    private CountTrainerMode _countTrainer;
+    private HiLoCounter _counter = null!;
+    private int _roundsInShoe;
+    private int? _quizAnswer;
+    private bool _quizAtShoeEnd;
+    private bool _isQuizOpen;
+    private string _quizInput = "";
+    private string _quizError = "";
 
     /// <summary>Creates the table; call <see cref="Start"/> to begin playing.</summary>
     /// <param name="rules">The table rules.</param>
@@ -88,10 +97,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         Player.InsuranceRequested += OnInsuranceRequested;
 
         AddChipCommand = new RelayCommand<int>(AddChip, CanAddChip);
-        RemoveChipCommand = new RelayCommand<int>(RemoveChip, value => Phase == TablePhase.Betting && BetStacks.Any(s => s.Chip.Value == value));
-        ClearBetCommand = new RelayCommand(ClearBet, () => Phase == TablePhase.Betting);
-        DealCommand = new RelayCommand(Deal, () => Phase == TablePhase.Betting && Player.PendingBet?.IsValidBet(Bet) == true);
-        LeaveTableCommand = new RelayCommand(() => Player.LeaveTable(), () => Phase == TablePhase.Betting);
+        RemoveChipCommand = new RelayCommand<int>(RemoveChip, value => CanBet && BetStacks.Any(s => s.Chip.Value == value));
+        ClearBetCommand = new RelayCommand(ClearBet, () => CanBet);
+        DealCommand = new RelayCommand(Deal, () => CanBet && Player.PendingBet?.IsValidBet(Bet) == true);
+        LeaveTableCommand = new RelayCommand(() => Player.LeaveTable(), () => CanBet);
+        SubmitQuizCommand = new RelayCommand(SubmitQuiz, () => IsQuizOpen);
         HitCommand = new RelayCommand(() => Choose(PlayerAction.Hit), () => Player.CanChoose(PlayerAction.Hit));
         StandCommand = new RelayCommand(() => Choose(PlayerAction.Stand), () => Player.CanChoose(PlayerAction.Stand));
         DoubleCommand = new RelayCommand(() => Choose(PlayerAction.Double), () => Player.CanChoose(PlayerAction.Double));
@@ -100,8 +110,11 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         DeclineInsuranceCommand = new RelayCommand(() => AnswerInsurance(take: false), () => Player.PendingInsurance is not null);
         NewGameCommand = new RelayCommand(() => _newGame?.TrySetResult(), () => IsSessionOver);
         ToggleSoundCommand = new RelayCommand(() => IsSoundOn = !IsSoundOn);
-        _commands = [AddChipCommand, RemoveChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, TakeInsuranceCommand, DeclineInsuranceCommand, NewGameCommand];
+        _commands = [AddChipCommand, RemoveChipCommand, ClearBetCommand, DealCommand, LeaveTableCommand, HitCommand, StandCommand, DoubleCommand, SplitCommand, TakeInsuranceCommand, DeclineInsuranceCommand, SubmitQuizCommand, NewGameCommand];
     }
+
+    /// <summary>The count quiz asks every this many rounds of a shoe (spec E13).</summary>
+    public const int QuizInterval = 5;
 
     /// <summary>The human player whose requests the buttons complete.</summary>
     public GuiPlayer Player { get; } = new();
@@ -196,10 +209,142 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private HintMode ActiveHints => ProFeatures.IsUnlocked ? Hints : HintMode.Off;
 
     /// <summary>The settings to save: the rules for the next game, the bankrolls, the Sound switch and the strategy hints.</summary>
-    public GameSettings CurrentSettings => GameSettings.From(_nextRules, _startingBankroll, _nextBankroll, IsSoundOn, Hints);
+    public GameSettings CurrentSettings => GameSettings.From(_nextRules, _startingBankroll, _nextBankroll, IsSoundOn, Hints, CountTrainer);
 
     /// <summary>Whether the table waits between rounds, so the settings can be opened and the bankroll reset.</summary>
-    public bool IsBetweenRounds => Phase == TablePhase.Betting || IsSessionOver;
+    public bool IsBetweenRounds => (Phase == TablePhase.Betting && !IsQuizOpen) || IsSessionOver;
+
+    // Betting (chips, Deal, Leave table) waits for the answer of an open count quiz.
+    private bool CanBet => Phase == TablePhase.Betting && !IsQuizOpen;
+
+    /// <summary>The count trainer (spec E13, a Pro feature; saved).</summary>
+    public CountTrainerMode CountTrainer
+    {
+        get => _countTrainer;
+        set
+        {
+            if (SetProperty(ref _countTrainer, value))
+            {
+                UpdateCount();
+                SaveSettings();
+            }
+        }
+    }
+
+    // The count trainer in effect: none while the Pro features are locked.
+    private CountTrainerMode ActiveCountTrainer => ProFeatures.IsUnlocked ? CountTrainer : CountTrainerMode.Off;
+
+    // Hints include the index plays only while the count is shown; in the quiz they would give the count away.
+    private bool UsesCountPlays => ActiveCountTrainer == CountTrainerMode.ShowCount;
+
+    /// <summary>The Hi-Lo count of the current shoe.</summary>
+    public HiLoCounter Counter => _counter;
+
+    /// <summary>Whether the count is shown (count trainer Show count).</summary>
+    public bool IsCountShown => ActiveCountTrainer == CountTrainerMode.ShowCount;
+
+    /// <summary>The running count, e.g. <c>Running count: +4</c>.</summary>
+    public string RunningCountText => $"Running count: {DisplayText.Count(_counter.RunningCount)}";
+
+    /// <summary>The true count, e.g. <c>True count: +1.3</c>.</summary>
+    public string TrueCountText => $"True count: {DisplayText.TrueCount(_counter.TrueCount)}";
+
+    /// <summary>The decks left in the shoe, e.g. <c>Decks left: 3.1</c>.</summary>
+    public string DecksLeftText => $"Decks left: {_counter.DecksRemaining.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}";
+
+    /// <summary>The bet of the 1–8 spread for the true count, e.g. <c>Count bet: 2 units = 20</c>.</summary>
+    public string CountBetText
+    {
+        get
+        {
+            var units = CountingStrategy.BetUnits(_counter.TrueCount);
+            return $"Count bet: {units} unit{(units == 1 ? "" : "s")} = {DisplayText.Money(units * _rules.MinBet)}";
+        }
+    }
+
+    /// <summary>Whether the count quiz is open: the player is asked for the running count before the next bet.</summary>
+    public bool IsQuizOpen
+    {
+        get => _isQuizOpen;
+        private set
+        {
+            if (SetProperty(ref _isQuizOpen, value))
+            {
+                OnPropertyChanged(nameof(IsBetweenRounds));
+                RefreshCommands();
+            }
+        }
+    }
+
+    /// <summary>The question of the quiz.</summary>
+    public string QuizQuestion => _quizAtShoeEnd
+        ? "End of the shoe: what was the running count before the shuffle?"
+        : "What is the running count?";
+
+    /// <summary>The answer typed into the quiz, e.g. <c>+4</c> or <c>-3</c>.</summary>
+    public string QuizInput
+    {
+        get => _quizInput;
+        set => SetProperty(ref _quizInput, value ?? "");
+    }
+
+    /// <summary>Why the answer was not accepted; empty otherwise.</summary>
+    public string QuizError
+    {
+        get => _quizError;
+        private set => SetProperty(ref _quizError, value);
+    }
+
+    /// <summary>Number of quiz questions answered in this program run.</summary>
+    public int QuizAnswered { get; private set; }
+
+    /// <summary>Number of correct quiz answers in this program run.</summary>
+    public int QuizCorrect { get; private set; }
+
+    /// <summary>Checks the quiz answer (also Enter in the answer field).</summary>
+    public IRelayCommand SubmitQuizCommand { get; }
+
+    private void UpdateCount()
+    {
+        OnPropertyChanged(nameof(IsCountShown));
+        OnPropertyChanged(nameof(RunningCountText));
+        OnPropertyChanged(nameof(TrueCountText));
+        OnPropertyChanged(nameof(DecksLeftText));
+        OnPropertyChanged(nameof(CountBetText));
+    }
+
+    private void SubmitQuiz()
+    {
+        if (!IsQuizOpen || _quizAnswer is not { } answer)
+        {
+            return;
+        }
+
+        var text = QuizInput.Trim().Replace('−', '-');
+        if (!int.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out var guess))
+        {
+            QuizError = "Please enter a whole number, e.g. +4 or -3.";
+            return;
+        }
+
+        QuizAnswered++;
+        var verb = _quizAtShoeEnd ? "was" : "is";
+        string result;
+        if (guess == answer)
+        {
+            QuizCorrect++;
+            result = $"Count quiz: correct, the running count {verb} {DisplayText.Count(answer)}.";
+        }
+        else
+        {
+            result = $"Count quiz: the running count {verb} {DisplayText.Count(answer)}, you said {DisplayText.Count(guess)}.";
+        }
+
+        _quizAnswer = null;
+        QuizError = "";
+        IsQuizOpen = false;
+        Status = $"{result} {Status}";
+    }
 
     /// <summary>The player's hands (more than one after a split).</summary>
     public ObservableCollection<HandViewModel> PlayerHands { get; } = [];
@@ -269,6 +414,13 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     {
         get => _isNoInsuranceRecommended;
         private set => SetProperty(ref _isNoInsuranceRecommended, value);
+    }
+
+    /// <summary>Whether the take button is highlighted: the count says insurance (true count ≥ +3, hint mode Show).</summary>
+    public bool IsTakeInsuranceRecommended
+    {
+        get => _isTakeInsuranceRecommended;
+        private set => SetProperty(ref _isTakeInsuranceRecommended, value);
     }
 
     /// <summary>Takes the insurance or even money (spec E12; no key).</summary>
@@ -383,6 +535,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         OnPropertyChanged(nameof(IsSoundOn));
         _hints = settings.Hints;
         OnPropertyChanged(nameof(Hints));
+        _countTrainer = settings.CountTrainer;
+        OnPropertyChanged(nameof(CountTrainer));
+        UpdateCount();
         _startingBankroll = settings.StartingBankroll;
         var rules = settings.ToRules(_nextRules);
         if (resetBankroll && IsBetweenRounds)
@@ -515,7 +670,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public ValueTask OnShoeShuffledAsync(CancellationToken ct)
     {
         _shuffled = true;
+        _roundsInShoe = 0;
         UpdateShoe();
+        UpdateCount();
         Play(Sound.Shuffle);
         return ValueTask.CompletedTask;
     }
@@ -539,6 +696,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         var hand = notification.Recipient.IsDealer ? Dealer : PlayerHands[notification.Recipient.HandIndex];
         var card = new CardViewModel(notification.Card);
         UpdateShoe();
+        UpdateCount();
         Play(Sound.CardDeal);
         if (CardAnimator is { } animator)
         {
@@ -601,6 +759,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     public async ValueTask OnHoleCardRevealedAsync(HoleCardRevealedNotification notification, CancellationToken ct)
     {
         var hidden = Dealer.Cards.FirstOrDefault(c => !c.IsFaceUp);
+        UpdateCount();
         if (hidden is not null)
         {
             Play(Sound.CardTurn);
@@ -656,6 +815,16 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         if (ResultSound(result) is { } sound)
         {
             Play(sound);
+        }
+
+        // Count quiz: every 5th round of a shoe and before it is reshuffled, asked with the next bet (the count is
+        // taken now, as the shuffle comes before the bet request).
+        _roundsInShoe++;
+        var shoeEnds = _cardSource.NeedsReshuffle;
+        if (ActiveCountTrainer == CountTrainerMode.Quiz && (_roundsInShoe % QuizInterval == 0 || shoeEnds))
+        {
+            _quizAnswer = _counter.RunningCount;
+            _quizAtShoeEnd = shoeEnds;
         }
 
         return ValueTask.CompletedTask;
@@ -754,7 +923,14 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         _cardSource = _cardSourceFactory(_rules);
         UpdateShoe();
         Bankroll = _nextBankroll;
-        return new BlackjackGame(_rules, _cardSource, _nextBankroll, [this]);
+
+        // A new shoe: the count starts at 0. The counter comes first, so the table shows the count with each card.
+        _counter = new HiLoCounter(_cardSource);
+        _roundsInShoe = 0;
+        _quizAnswer = null;
+        IsQuizOpen = false;
+        UpdateCount();
+        return new BlackjackGame(_rules, _cardSource, _nextBankroll, [_counter, this]);
     }
 
     private SessionLog NewLog()
@@ -799,6 +975,18 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         var shuffled = _shuffled ? "The shoe has been shuffled. " : "";
         _shuffled = false;
         Status = $"{notice}{shuffled}Place your bet ({DisplayText.Money(_rules.MinBet)}–{DisplayText.Money(max)}) and press Deal.";
+        if (_quizAnswer is not null && ActiveCountTrainer == CountTrainerMode.Quiz)
+        {
+            QuizInput = "";
+            QuizError = "";
+            OnPropertyChanged(nameof(QuizQuestion));
+            IsQuizOpen = true;
+        }
+        else
+        {
+            _quizAnswer = null;
+        }
+
         Phase = TablePhase.Betting;
         RefreshCommands();
     }
@@ -813,9 +1001,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         Status = context.HandCount > 1 ? $"Hand {context.HandIndex + 1}: your move." : "Your move.";
         if (ActiveHints == HintMode.Show)
         {
-            var recommended = BasicStrategyTable.Full.Decide(context);
+            var (recommended, play) = Advise(context);
             RecommendedAction = recommended;
-            Hint = DisplayText.StrategyHint(recommended, context);
+            Hint = play is null ? DisplayText.StrategyHint(recommended, context) : DisplayText.CountHint(play, context, _counter.TrueCount);
             IsHintMistake = false;
         }
 
@@ -830,9 +1018,17 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         Status = IsEvenMoney ? "Even money?" : "Insurance?";
         if (ActiveHints == HintMode.Show)
         {
-            Hint = DisplayText.InsuranceHint(IsEvenMoney);
             IsHintMistake = false;
-            IsNoInsuranceRecommended = true;
+            if (CountSaysInsurance)
+            {
+                Hint = InsuranceCountHint();
+                IsTakeInsuranceRecommended = true;
+            }
+            else
+            {
+                Hint = DisplayText.InsuranceHint(IsEvenMoney);
+                IsNoInsuranceRecommended = true;
+            }
         }
 
         Phase = TablePhase.Insurance;
@@ -850,9 +1046,9 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         {
             ClearHint();
         }
-        else if (ActiveHints == HintMode.Feedback && take)
+        else if (ActiveHints == HintMode.Feedback && take != CountSaysInsurance)
         {
-            Hint = DisplayText.InsuranceFeedback(IsEvenMoney);
+            Hint = take ? DisplayText.InsuranceFeedback(IsEvenMoney) : InsuranceCountHint(" – you declined");
             IsHintMistake = true;
         }
 
@@ -867,8 +1063,18 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         RefreshCommands();
     }
 
+    // The action for a decision: basic strategy, with the index plays while the count is shown.
+    private (PlayerAction Action, IndexPlay? Play) Advise(DecisionContext context) =>
+        UsesCountPlays ? CountingStrategy.Decide(context, _counter.TrueCount) : (BasicStrategyTable.Full.Decide(context), null);
+
+    private bool CountSaysInsurance => UsesCountPlays && CountingStrategy.TakeInsurance(_counter.TrueCount);
+
+    // E.g. "Count play: Insurance (true count +3.2 ≥ +3)" or "Count play: Insurance – you declined (…)".
+    private string InsuranceCountHint(string declined = "") =>
+        $"Count play: {TakeInsuranceText}{declined} ({DisplayText.IndexCondition(_counter.TrueCount, CountingStrategy.InsuranceIndex, atOrAbove: true)})";
+
     private bool CanAddChip(int value) =>
-        Phase == TablePhase.Betting && ChipViewModel.Values.Contains(value)
+        CanBet && ChipViewModel.Values.Contains(value)
         && Player.PendingBet is { } context && Bet + value <= context.MaxAllowedBet;
 
     private void AddChip(int value)
@@ -983,14 +1189,16 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         }
 
         // Before the engine goes on: a round without further decisions ends inside Player.Choose.
-        var recommended = BasicStrategyTable.Full.Decide(context);
+        var (recommended, play) = Advise(context);
         if (ActiveHints == HintMode.Show)
         {
             ClearHint();
         }
         else if (ActiveHints == HintMode.Feedback && action != recommended)
         {
-            Hint = DisplayText.StrategyFeedback(recommended, action, context);
+            Hint = play is null
+                ? DisplayText.StrategyFeedback(recommended, action, context)
+                : DisplayText.CountFeedback(play, action, context, _counter.TrueCount);
             IsHintMistake = true;
         }
 
@@ -1009,6 +1217,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         IsHintMistake = false;
         RecommendedAction = null;
         IsNoInsuranceRecommended = false;
+        IsTakeInsuranceRecommended = false;
     }
 
     private async Task PauseAsync(CancellationToken ct)

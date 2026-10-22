@@ -2,12 +2,14 @@ namespace Blackjack.Simulation.Statistics;
 
 /// <summary>
 /// Accumulates the results of a set of rounds (all rounds, or one breakdown row).
-/// Money totals are <c>decimal</c>; the variance of the per-round result is computed in <c>double</c>, in units of the bet.
+/// Money totals are <c>decimal</c>; the sums for the standard error are kept in <c>double</c>.
 /// </summary>
 internal sealed class StatisticsBucket
 {
-    private double _sumResult;
-    private double _sumResultSquared;
+    // Sums of the initial bet b and the net n per round, for the standard error of the ratio Σn / Σb.
+    private double _sumBetSquared;
+    private double _sumNetBet;
+    private double _sumNetSquared;
 
     /// <summary>Number of rounds.</summary>
     public long Rounds { get; private set; }
@@ -54,7 +56,11 @@ internal sealed class StatisticsBucket
     /// <summary>House edge in %: −net / initial bets (SPEC 7.7). <c>NaN</c> without rounds.</summary>
     public double HouseEdgePercent => InitialBets == 0 ? double.NaN : (double)(-Net / InitialBets) * 100;
 
-    /// <summary>Standard error of the per-round result, in % of the initial bet. <c>NaN</c> with fewer than 2 rounds.</summary>
+    /// <summary>
+    /// Standard error of the house edge (net / initial bets), in % of the initial bets. It is the standard error of a
+    /// ratio, so rounds with larger bets weigh more (bet spread of <c>hilo</c>, SPEC E13); with a flat bet it equals
+    /// the standard error of the per-round result in units of the bet. <c>NaN</c> with fewer than 2 rounds.
+    /// </summary>
     public double StandardErrorPercent
     {
         get
@@ -65,8 +71,12 @@ internal sealed class StatisticsBucket
             }
 
             var n = (double)Rounds;
-            var variance = (_sumResultSquared - (_sumResult * _sumResult / n)) / (n - 1);
-            return Math.Sqrt(Math.Max(variance, 0) / n) * 100;
+            var bets = (double)InitialBets;
+            var ratio = (double)Net / bets;
+
+            // Σ(net − ratio × bet)², the residuals of the ratio estimate.
+            var residuals = _sumNetSquared - (2 * ratio * _sumNetBet) + (ratio * ratio * _sumBetSquared);
+            return Math.Sqrt(Math.Max(residuals, 0) * n / (n - 1)) / bets * 100;
         }
     }
 
@@ -108,9 +118,10 @@ internal sealed class StatisticsBucket
         Wagered += result.TotalBet;
         Net += result.Net;
 
-        var perRound = (double)(result.Net / result.InitialBet);
-        _sumResult += perRound;
-        _sumResultSquared += perRound * perRound;
+        var (bet, net) = ((double)result.InitialBet, (double)result.Net);
+        _sumBetSquared += bet * bet;
+        _sumNetBet += net * bet;
+        _sumNetSquared += net * net;
 
         if (result.PlayerHands.Count > 1)
         {
@@ -179,8 +190,9 @@ internal sealed class StatisticsBucket
         DealerBusts += other.DealerBusts;
         DoubleRounds += other.DoubleRounds;
         SplitRounds += other.SplitRounds;
-        _sumResult += other._sumResult;
-        _sumResultSquared += other._sumResultSquared;
+        _sumBetSquared += other._sumBetSquared;
+        _sumNetBet += other._sumNetBet;
+        _sumNetSquared += other._sumNetSquared;
     }
 
     private static double Percent(long count, long total) => total == 0 ? double.NaN : 100.0 * count / total;

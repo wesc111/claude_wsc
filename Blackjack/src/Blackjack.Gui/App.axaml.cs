@@ -34,6 +34,7 @@ public sealed partial class App : Application
             {
                 IsSoundOn = settings.IsSoundOn,
                 Hints = settings.Hints,
+                CountTrainer = settings.CountTrainer,
             };
             var window = new MainWindow { DataContext = table };
             table.CardAnimator = window;

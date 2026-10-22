@@ -220,6 +220,14 @@
             </StackPanel>
 
             <!-- Left column, bet area: one row per chip value; clicking a stack takes one chip back. -->
+            <!-- The Hi-Lo count (spec E13, count trainer "Show the count"), above the bet area. -->
+            <StackPanel Grid.Row="1" IsVisible="{Binding IsCountShown}" HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Spacing="2" ToolTip.Tip="Hi-Lo: 2–6 count +1, 7–9 count 0, 10–A count −1. The true count is the running count per deck left.">
+                <TextBlock Text="{Binding RunningCountText}" FontSize="17" FontWeight="SemiBold" Foreground="#ffe08a" />
+                <TextBlock Text="{Binding TrueCountText}" FontSize="15" />
+                <TextBlock Text="{Binding DecksLeftText}" FontSize="13" Opacity="0.8" />
+                <TextBlock Text="{Binding CountBetText}" FontSize="13" Opacity="0.8" />
+            </StackPanel>
             <Border Grid.Row="1" Classes="betarea" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="22">
                     <!-- Fixed height for four stacks (83 px each), so the area does not jump. -->
@@ -294,9 +302,28 @@
                                        IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
-                            <Button Content="{Binding TakeInsuranceText}" Command="{Binding TakeInsuranceCommand}" MinWidth="130" />
+                            <Button Content="{Binding TakeInsuranceText}" Command="{Binding TakeInsuranceCommand}" MinWidth="130"
+                                    Classes.recommended="{Binding IsTakeInsuranceRecommended}" />
                             <Button Content="{Binding DeclineInsuranceText}" Command="{Binding DeclineInsuranceCommand}" MinWidth="130"
                                     Classes.recommended="{Binding IsNoInsuranceRecommended}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <!-- The count quiz (spec E13) at the same place: asked before the next bet; Enter in the field checks. -->
+                <Border Grid.Row="1" Classes="insurance" IsVisible="{Binding IsQuizOpen}"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-20,0,0" ZIndex="1">
+                    <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="24">
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="Count quiz" FontSize="14" Opacity="0.85" />
+                            <TextBlock Text="{Binding QuizQuestion}" FontSize="19" FontWeight="SemiBold" Foreground="#ffe08a" />
+                            <TextBlock Text="Hi-Lo: 2–6 count +1, 7–9 count 0, 10–A count −1." FontSize="13" Opacity="0.75" />
+                            <TextBlock Classes="hint mistake" Text="{Binding QuizError}"
+                                       IsVisible="{Binding QuizError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                            <TextBox x:Name="QuizAnswer" Text="{Binding QuizInput}" PlaceholderText="e.g. +4" Width="130"
+                                     HorizontalContentAlignment="Center" KeyDown="OnQuizKeyDown" />
+                            <Button Content="Check" Command="{Binding SubmitQuizCommand}" MinWidth="130" />
                         </StackPanel>
                     </Grid>
                 </Border>
