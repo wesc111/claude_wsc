@@ -33,6 +33,7 @@ public sealed partial class App : Application
                 bankroll: settings.Bankroll, saveSettings: s => store.Save(s))
             {
                 IsSoundOn = settings.IsSoundOn,
+                Hints = settings.Hints,
             };
             var window = new MainWindow { DataContext = table };
             table.CardAnimator = window;

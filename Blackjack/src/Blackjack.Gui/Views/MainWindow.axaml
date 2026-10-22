@@ -51,6 +51,18 @@
         <Style Selector="Button, CheckBox">
             <Setter Property="Focusable" Value="False" />
         </Style>
+        <!-- The basic strategy action in the hint mode Show (spec E11). -->
+        <Style Selector="Button.recommended">
+            <Setter Property="BorderBrush" Value="#ffd24a" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="Foreground" Value="#cfe8ff" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+        <Style Selector="TextBlock.hint.mistake">
+            <Setter Property="Foreground" Value="#ffb36b" />
+        </Style>
         <!-- Chips in the tray and stacks in the bet area: the chip graphic is the whole button. -->
         <Style Selector="Button.chip, Button.stack">
             <Setter Property="MinWidth" Value="0" />
@@ -261,8 +273,14 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
-                <TextBlock Grid.Row="2" Text="{Binding LastResult}" FontSize="22" FontWeight="Bold" Foreground="#ffe08a"
-                           HorizontalAlignment="Center" Margin="0,8,0,0" />
+                <StackPanel Grid.Row="2" HorizontalAlignment="Center" Margin="0,8,0,0" Spacing="4">
+                    <TextBlock Text="{Binding LastResult}" FontSize="22" FontWeight="Bold" Foreground="#ffe08a"
+                               HorizontalAlignment="Center" />
+                    <!-- Strategy hint or feedback (spec E11). -->
+                    <TextBlock Classes="hint" Classes.mistake="{Binding IsHintMistake}" Text="{Binding Hint}"
+                               IsVisible="{Binding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
             </Grid>
 
             <!-- Bet buttons at the left: chip tray (a click puts the chip into the bet area) and Clear. -->
@@ -287,10 +305,10 @@
             <!-- Play buttons in the middle, below the hands; Deal at the right, set apart and highlighted. -->
             <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
                         VerticalAlignment="Center" Margin="20,12,0,0">
-                <Button Content="Hit" Command="{Binding HitCommand}" ToolTip.Tip="Hit (H)" />
-                <Button Content="Stand" Command="{Binding StandCommand}" ToolTip.Tip="Stand (S)" />
-                <Button Content="Double" Command="{Binding DoubleCommand}" ToolTip.Tip="Double (D)" />
-                <Button Content="Split" Command="{Binding SplitCommand}" ToolTip.Tip="Split (P)" />
+                <Button Content="Hit" Command="{Binding HitCommand}" ToolTip.Tip="Hit (H)" Classes.recommended="{Binding IsHitRecommended}" />
+                <Button Content="Stand" Command="{Binding StandCommand}" ToolTip.Tip="Stand (S)" Classes.recommended="{Binding IsStandRecommended}" />
+                <Button Content="Double" Command="{Binding DoubleCommand}" ToolTip.Tip="Double (D)" Classes.recommended="{Binding IsDoubleRecommended}" />
+                <Button Content="Split" Command="{Binding SplitCommand}" ToolTip.Tip="Split (P)" Classes.recommended="{Binding IsSplitRecommended}" />
                 <Button Content="New game" Command="{Binding NewGameCommand}" IsVisible="{Binding IsSessionOver}" ToolTip.Tip="New game (N)" />
                 <Button Classes="deal" Content="Deal" Command="{Binding DealCommand}" Margin="30,0,0,0" ToolTip.Tip="Deal (Enter or Space)" />
             </StackPanel>

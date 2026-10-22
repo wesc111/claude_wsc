@@ -49,6 +49,10 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
     private bool _shuffled;
     private Task? _session;
     private bool _isSoundOn = true;
+    private HintMode _hints;
+    private string _hint = "";
+    private bool _isHintMistake;
+    private PlayerAction? _recommendedAction;
 
     /// <summary>Creates the table; call <see cref="Start"/> to begin playing.</summary>
     /// <param name="rules">The table rules.</param>
@@ -118,8 +122,66 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         }
     }
 
-    /// <summary>The settings to save: the rules for the next game, the bankrolls and the Sound switch.</summary>
-    public GameSettings CurrentSettings => GameSettings.From(_nextRules, _startingBankroll, _nextBankroll, IsSoundOn);
+    /// <summary>The strategy hints (spec E11, a Pro feature; saved).</summary>
+    public HintMode Hints
+    {
+        get => _hints;
+        set
+        {
+            if (SetProperty(ref _hints, value))
+            {
+                SaveSettings();
+            }
+        }
+    }
+
+    /// <summary>The basic strategy action before a decision (Show), or the last decision that differed from it in this round (Feedback).</summary>
+    public string Hint
+    {
+        get => _hint;
+        private set => SetProperty(ref _hint, value);
+    }
+
+    /// <summary>Whether <see cref="Hint"/> reports a decision that differed from basic strategy.</summary>
+    public bool IsHintMistake
+    {
+        get => _isHintMistake;
+        private set => SetProperty(ref _isHintMistake, value);
+    }
+
+    /// <summary>The basic strategy action of the pending decision in the mode Show; <c>null</c> otherwise.</summary>
+    public PlayerAction? RecommendedAction
+    {
+        get => _recommendedAction;
+        private set
+        {
+            if (SetProperty(ref _recommendedAction, value))
+            {
+                OnPropertyChanged(nameof(IsHitRecommended));
+                OnPropertyChanged(nameof(IsStandRecommended));
+                OnPropertyChanged(nameof(IsDoubleRecommended));
+                OnPropertyChanged(nameof(IsSplitRecommended));
+            }
+        }
+    }
+
+    /// <summary>Whether the Hit button is highlighted as the basic strategy action.</summary>
+    public bool IsHitRecommended => RecommendedAction == PlayerAction.Hit;
+
+    /// <summary>Whether the Stand button is highlighted as the basic strategy action.</summary>
+    public bool IsStandRecommended => RecommendedAction == PlayerAction.Stand;
+
+    /// <summary>Whether the Double button is highlighted as the basic strategy action.</summary>
+    public bool IsDoubleRecommended => RecommendedAction == PlayerAction.Double;
+
+    /// <summary>Whether the Split button is highlighted as the basic strategy action.</summary>
+    public bool IsSplitRecommended => RecommendedAction == PlayerAction.Split;
+
+    // The hints in effect: none while the Pro features are locked.
+    private HintMode ActiveHints => ProFeatures.IsUnlocked ? Hints : HintMode.Off;
+
+    /// <summary>The settings to save: the rules for the next game, the bankrolls, the Sound switch and the strategy hints.</summary>
+    public GameSettings CurrentSettings => GameSettings.From(_nextRules, _startingBankroll, _nextBankroll, IsSoundOn, Hints);
 
     /// <summary>Whether the table waits between rounds, so the settings can be opened and the bankroll reset.</summary>
     public bool IsBetweenRounds => Phase == TablePhase.Betting || IsSessionOver;
@@ -253,6 +315,8 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         ArgumentNullException.ThrowIfNull(settings);
         _isSoundOn = settings.IsSoundOn;
         OnPropertyChanged(nameof(IsSoundOn));
+        _hints = settings.Hints;
+        OnPropertyChanged(nameof(Hints));
         _startingBankroll = settings.StartingBankroll;
         var rules = settings.ToRules(_nextRules);
         if (resetBankroll && IsBetweenRounds)
@@ -398,6 +462,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         PlayerHands.Clear();
         PlayerHands.Add(new HandViewModel("You") { BetText = $"Bet {DisplayText.Money(notification.Bet)}" });
         LastResult = "";
+        ClearHint();
         Status = "Dealing …";
         return ValueTask.CompletedTask;
     }
@@ -600,6 +665,7 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         Dealer.UpdateTotal();
         PlayerHands.Clear();
         LastResult = "";
+        ClearHint();
         SaveSettings();
     }
 
@@ -669,6 +735,14 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         }
 
         Status = context.HandCount > 1 ? $"Hand {context.HandIndex + 1}: your move." : "Your move.";
+        if (ActiveHints == HintMode.Show)
+        {
+            var recommended = BasicStrategyTable.Full.Decide(context);
+            RecommendedAction = recommended;
+            Hint = DisplayText.StrategyHint(recommended, context);
+            IsHintMistake = false;
+        }
+
         Phase = TablePhase.Playing;
         RefreshCommands();
     }
@@ -783,6 +857,23 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
 
     private void Choose(PlayerAction action)
     {
+        if (Player.PendingDecision is not { } context || !Player.CanChoose(action))
+        {
+            return;
+        }
+
+        // Before the engine goes on: a round without further decisions ends inside Player.Choose.
+        var recommended = BasicStrategyTable.Full.Decide(context);
+        if (ActiveHints == HintMode.Show)
+        {
+            ClearHint();
+        }
+        else if (ActiveHints == HintMode.Feedback && action != recommended)
+        {
+            Hint = DisplayText.StrategyFeedback(recommended, action, context);
+            IsHintMistake = true;
+        }
+
         Phase = TablePhase.Dealing;
         if (!Player.Choose(action))
         {
@@ -790,6 +881,13 @@ public sealed class TableViewModel : ObservableObject, IGameObserver
         }
 
         RefreshCommands();
+    }
+
+    private void ClearHint()
+    {
+        Hint = "";
+        IsHintMistake = false;
+        RecommendedAction = null;
     }
 
     private async Task PauseAsync(CancellationToken ct)

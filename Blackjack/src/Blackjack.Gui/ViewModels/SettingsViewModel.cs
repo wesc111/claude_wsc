@@ -25,6 +25,7 @@ public sealed class SettingsViewModel
         ResplitAces = settings.ResplitAces;
         StartingBankroll = Find(StartingBankrollOptions, settings.StartingBankroll);
         IsSoundOn = settings.IsSoundOn;
+        Hints = Find(HintOptions, settings.Hints);
         BankrollText = $"Current bankroll: {DisplayText.Money(bankroll)}";
         RulesNote = rulesApplyNow
             ? "Changed table rules apply at once."
@@ -54,6 +55,20 @@ public sealed class SettingsViewModel
 
     /// <summary>The starting bankrolls.</summary>
     public IReadOnlyList<SettingOption<decimal>> StartingBankrollOptions { get; } = MoneyOptions(GameSettings.StartingBankrollOptions);
+
+    /// <summary>The strategy hints (spec E11).</summary>
+    public IReadOnlyList<SettingOption<HintMode>> HintOptions { get; } =
+    [
+        new(HintMode.Off, "Off"),
+        new(HintMode.Show, "Show the basic strategy action"),
+        new(HintMode.Feedback, "Tell me when I deviate"),
+    ];
+
+    /// <summary>Whether the strategy hints can be chosen (a Pro feature).</summary>
+    public bool AreHintsAvailable => ProFeatures.IsUnlocked;
+
+    /// <summary>The table the hints follow, also under other rules.</summary>
+    public string HintsNote => "Hints follow basic strategy for 6 decks, S17 and double after split, also under other table rules.";
 
     /// <summary>Number of decks.</summary>
     public int Decks { get; set; }
@@ -85,6 +100,9 @@ public sealed class SettingsViewModel
     /// <summary>The Sound switch.</summary>
     public bool IsSoundOn { get; set; }
 
+    /// <summary>The strategy hints.</summary>
+    public SettingOption<HintMode> Hints { get; set; }
+
     /// <summary>The current bankroll, e.g. <c>Current bankroll: 1010</c>.</summary>
     public string BankrollText { get; }
 
@@ -104,6 +122,7 @@ public sealed class SettingsViewModel
         ResplitAces = ResplitAces,
         StartingBankroll = StartingBankroll.Value,
         IsSoundOn = IsSoundOn,
+        Hints = Hints.Value,
     };
 
     /// <summary>The payout as a ratio, e.g. <c>3:2</c>.</summary>

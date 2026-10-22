@@ -54,4 +54,36 @@ public static class DisplayText
         HandOutcome.DealerBlackjack => "Dealer has Blackjack – you lose",
         _ => outcome.ToString(),
     };
+
+    /// <summary>
+    /// The decision situation of a strategy hint (spec E11), e.g. <c>hard 11 vs 6</c>, <c>soft 18 vs A</c> or
+    /// <c>pair of 8s vs 10</c>; a pair only while it may be split.
+    /// </summary>
+    public static string Situation(DecisionContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var cards = context.PlayerCards;
+        var upcard = context.DealerUpcard.IsAce ? "A" : context.DealerUpcard.BaseValue.ToString(CultureInfo.InvariantCulture);
+        var hand = context.AllowedActions.Contains(PlayerAction.Split) && cards.Count == 2 && cards[0].BaseValue == cards[1].BaseValue
+            ? cards[0].IsAce ? "pair of Aces" : $"pair of {cards[0].BaseValue}s"
+            : $"{(context.IsSoft ? "soft" : "hard")} {context.PlayerTotal}";
+        return $"{hand} vs {upcard}";
+    }
+
+    /// <summary>The hint shown before a decision, e.g. <c>Basic strategy: Double (hard 11 vs 6)</c>.</summary>
+    public static string StrategyHint(PlayerAction recommended, DecisionContext context) =>
+        $"Basic strategy: {recommended} ({Situation(context)})";
+
+    /// <summary>The feedback after a decision that differs from basic strategy, e.g. <c>Basic strategy: Double – you hit (hard 11 vs 6)</c>.</summary>
+    public static string StrategyFeedback(PlayerAction recommended, PlayerAction chosen, DecisionContext context)
+    {
+        var you = chosen switch
+        {
+            PlayerAction.Stand => "you stood",
+            PlayerAction.Double => "you doubled",
+            PlayerAction.Split => "you split",
+            _ => "you hit",
+        };
+        return $"Basic strategy: {recommended} – {you} ({Situation(context)})";
+    }
 }

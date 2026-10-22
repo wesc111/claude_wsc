@@ -66,6 +66,11 @@
 
         <TextBlock Classes="heading" Text="Options" Margin="0,8,0,0" />
         <CheckBox Content="Sound" IsChecked="{Binding IsSoundOn}" Foreground="White" />
+        <Grid ColumnDefinitions="170,Auto" IsVisible="{Binding AreHintsAvailable}">
+            <TextBlock Text="Strategy hints" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding HintOptions}" SelectedItem="{Binding Hints}" />
+        </Grid>
+        <TextBlock Classes="note" Text="{Binding HintsNote}" IsVisible="{Binding AreHintsAvailable}" />
 
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="Cancel" IsCancel="True" Click="OnCancel" />

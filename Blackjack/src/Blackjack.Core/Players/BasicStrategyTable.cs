@@ -1,11 +1,11 @@
-namespace Blackjack.Simulation.Players;
+namespace Blackjack.Core;
 
 /// <summary>
 /// A basic strategy table stored as data: one row of codes per player total (or pair), one column per
 /// dealer upcard 2, 3, …, 10, A. Codes are separated by spaces: <c>H</c> Hit, <c>S</c> Stand,
 /// <c>D</c> Double/Hit, <c>Ds</c> Double/Stand, <c>P</c> Split, <c>-</c> no split (SPEC 6.2 and 7.6).
 /// </summary>
-internal sealed class BasicStrategyTable
+public sealed class BasicStrategyTable
 {
     private const int MinHardTotal = 4;
     private const int MinSoftTotal = 12;

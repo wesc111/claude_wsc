@@ -1,7 +1,7 @@
-namespace Blackjack.Simulation.Players;
+namespace Blackjack.Core;
 
 /// <summary>A cell of a basic strategy table (SPEC 7.6).</summary>
-internal enum StrategyCode
+public enum StrategyCode
 {
     /// <summary><c>H</c>: Hit.</summary>
     Hit,

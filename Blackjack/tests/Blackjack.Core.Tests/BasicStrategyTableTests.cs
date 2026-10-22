@@ -1,7 +1,7 @@
-using Blackjack.Simulation.Players;
-using static Blackjack.Simulation.Players.StrategyCode;
 
-namespace Blackjack.Simulation.Tests;
+using static Blackjack.Core.StrategyCode;
+
+namespace Blackjack.Core.Tests;
 
 /// <summary>
 /// SPEC 6.2 and 7.6 – every cell of both basic strategy tables. The expected values are written as rules

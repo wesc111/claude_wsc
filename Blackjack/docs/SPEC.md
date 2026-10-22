@@ -170,6 +170,7 @@ Blackjack.slnx
 | `PlayerAction` | enum | `Hit`, `Stand`; from M4 `Double`, `Split` (`Surrender` is a non-goal) |
 | `HandOutcome` | enum | `BlackjackWin`, `Win`, `DealerBust`, `Push`, `Loss`, `PlayerBust`, `DealerBlackjack`; extension methods `IsWin()`, `IsLoss()` |
 | `DealerStrategy` | class | Decides dealer Hit/Stand according to `Rules` |
+| `BasicStrategyTable`, `StrategyCode` | class, enum | The basic strategy tables of 6.2 and 7.6 as data, `Decide(DecisionContext)`; in Core since E11 (before: Simulation), so the GUI can give strategy hints |
 | `BlackjackGame` | class | Engine: runs a round, peek, settlement, bankroll |
 | `IPlayerStrategy` | interface | Bet and action decisions |
 | `IGameObserver` | interface | Async notifications about the course of a round (see 3.5) |
@@ -729,6 +730,24 @@ Strategy `basic` uses these tables; the Hit/Stand table of 6.2 remains available
 - Buttons and the Sound switch take no keyboard focus, so Space and Enter always reach the shortcuts instead of clicking the button clicked last; the Deal button is no longer the default button. The keys are handled before the controls of the window; an open deck list keeps its own keys. The settings dialog has none of these keys.
 - Tooltips name the keys, e.g. "Hit (H)", "Bet 25 (key 3)".
 - The mapping is a class of the GUI (`KeyboardShortcuts`), tested without UI: every key finds the command of its button, chips with and without Shift, other keys and modifiers are no shortcuts (also L), a round played with the keyboard, disabled commands do nothing, New game, Sound.
+
+### E11 – Strategy hints (GUI)
+
+- New setting "Strategy hints" in the Options group of the settings dialog, saved in the settings file of E9 (default Off; a value that is not offered falls back to Off):
+
+  | Mode | Behaviour |
+  |---|---|
+  | Off | no hints |
+  | Show ("Show the basic strategy action") | before each decision the button of the basic strategy action has a gold border and the felt shows e.g. `Basic strategy: Double (hard 11 vs 6)`; both disappear with the decision |
+  | Feedback ("Tell me when I deviate") | nothing before the decision; a decision that differs from basic strategy is reported afterwards, e.g. `Basic strategy: Hit – you stood (hard 16 vs 10)`, in orange. The report stays until the next Deal (also after the round ended); with several deviations in a round the last one is shown |
+
+- The hints use the full basic strategy of 7.6 (`BasicStrategyTable.Full`) under every table rule; the dialog says so ("Hints follow basic strategy for 6 decks, S17 and double after split, also under other table rules."). Tables for H17, no DAS or few decks are not part of E11.
+- The recommended action is always allowed at that moment: Double and Split fall back as in 7.6 (e.g. hard 11 with three cards: Hit), so the hint is the same action the `basic` strategy of the simulator would take.
+- The situation names the hand and the dealer upcard: `hard 16`, `soft 18`, `pair of 8s` (only while Split is allowed, otherwise the total), `pair of Aces`; upcard `2`–`10` or `A`. Each hand after a split gets its own hint.
+- Mouse and keyboard (E10) decisions are judged the same way. No new keys.
+- `BasicStrategyTable` and `StrategyCode` move unchanged from Simulation to Core (public, no file I/O), so the GUI can use them; the simulator results stay the same.
+- Strategy hints are the first Pro feature: the GUI has one central switch `ProFeatures.IsUnlocked` (always `true` until a license check exists). While locked, no hints are given and the dialog hides the setting.
+- Tests: Show (the action and its button, only allowed actions, each hand after a split, hint gone after the decision), Off, Feedback (deviation reported until the next Deal, nothing after the basic strategy action, the last deviation of a round, keyboard), situation and feedback texts, setting saved/applied/default/not offered, dialog. The table tests of 6.2 and 7.6 move to `Blackjack.Core.Tests`.
 
 ## 9. Non-goals (not part of any current milestone)
 

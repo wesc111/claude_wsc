@@ -1,8 +1,8 @@
 namespace Blackjack.Gui.Settings;
 
 /// <summary>
-/// The settings the GUI keeps between starts (spec E9): table rules, starting bankroll, the bankroll to continue with
-/// and the Sound switch. The rules can only take the values offered in the settings dialog.
+/// The settings the GUI keeps between starts (spec E9): table rules, starting bankroll, the bankroll to continue with,
+/// the Sound switch and the strategy hints (E11). The rules can only take the values offered in the settings dialog.
 /// </summary>
 public sealed record GameSettings
 {
@@ -57,6 +57,9 @@ public sealed record GameSettings
     /// <summary>Whether sounds are played.</summary>
     public bool IsSoundOn { get; init; } = true;
 
+    /// <summary>The strategy hints (spec E11).</summary>
+    public HintMode Hints { get; init; }
+
     /// <summary>The settings with every value that is not offered replaced by its default.</summary>
     public GameSettings Normalized() => this with
     {
@@ -67,6 +70,7 @@ public sealed record GameSettings
         MaxBet = Offered(MaxBetOptions, MaxBet, Default.MaxBet),
         StartingBankroll = Offered(StartingBankrollOptions, StartingBankroll, Default.StartingBankroll),
         Bankroll = Bankroll >= 0 ? Bankroll : null,
+        Hints = Enum.IsDefined(Hints) ? Hints : Default.Hints,
     };
 
     /// <summary>The rules of these settings; rules without a setting (e.g. peek, split hands) come from <paramref name="baseRules"/>.</summary>
@@ -86,8 +90,8 @@ public sealed record GameSettings
         };
     }
 
-    /// <summary>The settings for the given rules, bankrolls and Sound switch.</summary>
-    public static GameSettings From(Rules rules, decimal startingBankroll, decimal? bankroll, bool isSoundOn)
+    /// <summary>The settings for the given rules, bankrolls, Sound switch and strategy hints.</summary>
+    public static GameSettings From(Rules rules, decimal startingBankroll, decimal? bankroll, bool isSoundOn, HintMode hints = HintMode.Off)
     {
         ArgumentNullException.ThrowIfNull(rules);
         return new GameSettings
@@ -103,6 +107,7 @@ public sealed record GameSettings
             StartingBankroll = startingBankroll,
             Bankroll = bankroll,
             IsSoundOn = isSoundOn,
+            Hints = hints,
         };
     }
 
